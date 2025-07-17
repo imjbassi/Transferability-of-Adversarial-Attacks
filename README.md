@@ -1,55 +1,69 @@
 # Evaluating Transferability of Adversarial Attacks Across Machine Learning Models
 
-This repository contains code and results for the study: **"Evaluating Transferability of Adversarial Attacks Across Machine Learning Models"**, conducted by Jaiveer Bassi as part of academic research at Grand Canyon University.
+This project benchmarks the cross-model transferability of adversarial attacks on convolutional neural networks trained on CIFAR-10. It investigates how well adversarial examples generated for one model architecture can deceive others, using standard attack methods.
 
 ## Overview
 
-Adversarial examples—inputs crafted with subtle perturbations—can cause machine learning models to misclassify with high confidence. One of the most concerning properties of such attacks is their **transferability**: adversarial inputs designed for one model often remain effective against other models, including those with different architectures.
+Adversarial attacks can cause machine learning models to misclassify inputs by applying small, imperceptible perturbations. A key concern is **transferability**—the ability of adversarial examples to fool models they were not explicitly crafted for.
 
-This research investigates how adversarial examples generated from one convolutional neural network (CNN) architecture perform against other networks trained on the CIFAR-10 dataset.
+This study evaluates three popular CNN architectures:
+- ResNet-18
+- VGG16
+- MobileNetV2
 
-## Objectives
+We examine three major attack methods:
+- Fast Gradient Sign Method (FGSM)
+- Projected Gradient Descent (PGD)
+- Carlini-Wagner (CW)
 
-- Assess the **transferability** of adversarial examples across CNNs.
-- Evaluate **attack success rates** for different source-target model combinations.
-- Compare **FGSM**, **PGD**, and **Carlini-Wagner (CW)** attacks.
-- Provide insights into which model architectures are most vulnerable in black-box settings.
+## Paper
 
-## Methodology
-
-### Dataset
-
-- **CIFAR-10**: 60,000 color images (32×32), 10 classes.
-- 50,000 training and 10,000 test samples.
-
-### Models Used
-
-- `ResNet-18`: Residual learning framework with skip connections.
-- `VGG16`: Deep sequential model without residuals.
-- `MobileNetV2`: Lightweight architecture optimized for mobile.
-
-### Attacks Implemented
-
-- **FGSM**: Fast Gradient Sign Method (single-step attack).
-- **PGD**: Projected Gradient Descent (iterative attack).
-- **CW**: Carlini-Wagner L2 Attack (optimization-based).
-
-### Metrics
-
-- **Attack Success Rate (ASR)**: Misclassification on source model.
-- **Transfer Success Rate (TSR)**: Misclassification on target model.
-- **Accuracy Under Attack**: Drop in classification accuracy under adversarial inputs.
-
-## Results
-
-- All three attacks (FGSM, PGD, CW) achieved **>99% ASR**.
-- **High transferability** observed across all model pairs.
-- Transferability varied slightly by architecture (ResNet and MobileNet had more mutual vulnerability than VGG16).
-- CW attacks, while complex, still showed **near-complete transferability**—contradicting past assumptions.
+**Title:** Evaluating Transferability of Adversarial Attacks Across Machine Learning Models  
+**Author:** Jaiveer Bassi  
+**Preprint:** [TechRxiv link pending]  
+**Institution:** Grand Canyon University
 
 ## Key Findings
 
-- Iterative attacks like PGD and CW transfer **as effectively** as FGSM.
-- Adversarial examples remain effective across different model designs.
-- Sole reliance on architectural variation is **insufficient** for defense.
-- Ensemble training and model-agnostic defense strategies are needed for true robustness.
+- All three attacks (FGSM, PGD, CW) exhibit near-complete transferability across models.
+- Transfer success rates are frequently above 99% regardless of model architecture.
+- This challenges the notion that iterative attacks are less transferable than simple one-step attacks.
+- VGG16 showed slightly lower cross-architecture vulnerability compared to ResNet-18 and MobileNetV2.
+
+## Experiment Setup
+
+- **Dataset:** CIFAR-10
+- **Models:** ResNet-18, VGG16, MobileNetV2 (all trained to ~90% test accuracy)
+- **Attacks:** FGSM (ϵ=8/255), PGD (10 steps, α=2/255), CW (L2-norm variant)
+- **Metrics:** Attack Success Rate (ASR), Transfer Success Rate (TSR)
+
+## Results Summary
+
+| Attack Type | Source Model  | Target Model | Transfer Success Rate (%) |
+|-------------|----------------|----------------|----------------------------|
+| FGSM        | ResNet-18 → MobileNetV2 | 99.93 |
+| PGD         | VGG16 → MobileNetV2     | 99.90 |
+| CW          | MobileNetV2 → ResNet-18 | 99.90 |
+
+## Visual Example
+
+![Figure 1: Adversarial Example](./Figure_1.png)
+
+The right image is perturbed but visually indistinguishable from the left original. Despite this, it causes incorrect predictions in multiple models.
+
+## Implications
+
+- Model architecture diversity alone is insufficient for defense.
+- Transferability exposes systems to black-box attacks without requiring model access.
+- Adversarial training and ensemble-based methods are essential for mitigating these risks.
+
+## Future Work
+
+- Extend to transformer and hybrid architectures
+- Analyze targeted attack transferability
+- Examine effect of adversarial training on cross-model robustness
+- Explore shared feature vulnerabilities in latent space
+
+## License
+
+This research code and documentation are released under an open license for academic and non-commercial use. See `LICENSE` for details.

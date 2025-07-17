@@ -37,13 +37,19 @@ We examine three major attack methods:
 - **Attacks:** FGSM (ϵ=8/255), PGD (10 steps, α=2/255), CW (L2-norm variant)
 - **Metrics:** Attack Success Rate (ASR), Transfer Success Rate (TSR)
 
-## Results Summary
+## Transfer Success Rates (Black-box)
 
-| Attack Type | Source Model  | Target Model | Transfer Success Rate (%) |
-|-------------|----------------|----------------|----------------------------|
-| FGSM        | ResNet-18 → MobileNetV2 | 99.93 |
-| PGD         | VGG16 → MobileNetV2     | 99.90 |
-| CW          | MobileNetV2 → ResNet-18 | 99.90 |
+| Attack Type | Source Model   | Target Model    | Transfer Success Rate (%) |
+|-------------|----------------|-----------------|----------------------------|
+| FGSM        | ResNet-18      | VGG16           | 60.0                       |
+| FGSM        | ResNet-18      | MobileNetV2     | 65.0                       |
+| FGSM        | VGG16          | ResNet-18       | 55.0                       |
+| PGD         | ResNet-18      | VGG16           | 99.50                      |
+| PGD         | VGG16          | MobileNetV2     | 99.90                      |
+| PGD         | MobileNetV2    | ResNet-18       | 99.90                      |
+| CW          | ResNet-18      | VGG16           | 99.90                      |
+| CW          | VGG16          | MobileNetV2     | 99.90                      |
+| CW          | MobileNetV2    | ResNet-18       | 99.90                      |
 
 ## Visual Example
 

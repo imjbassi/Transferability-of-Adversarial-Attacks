@@ -2,6 +2,22 @@ import torch
 import torch.nn.functional as F
 
 
+def checked_loss(logits, y):
+    if not torch.isfinite(logits).all():
+        raise ValueError('Nonfinite source logits during attack construction')
+    loss = F.cross_entropy(logits, y, reduction='none')
+    if not torch.isfinite(loss).all():
+        raise ValueError('Nonfinite source loss during attack construction')
+    return loss
+
+
+def checked_gradient(loss, x):
+    grad, = torch.autograd.grad(loss.sum(), x)
+    if not torch.isfinite(grad).all():
+        raise ValueError('Nonfinite source gradient during attack construction')
+    return grad
+
+
 def linf_attack(model, x, y, epsilon, steps=1, step_size=None, restarts=1, random_start=False):
     if not 0 <= epsilon <= 1 or steps < 1 or restarts < 1:
         raise ValueError('Invalid attack budget, steps, or restarts')
@@ -11,8 +27,9 @@ def linf_attack(model, x, y, epsilon, steps=1, step_size=None, restarts=1, rando
     original = x.detach()
     best = original.clone()
     with torch.no_grad():
-        best_loss = F.cross_entropy(model(best), y, reduction='none')
-        best_success = model(best).argmax(1).ne(y)
+        logits = model(best)
+        best_loss = checked_loss(logits, y)
+        best_success = logits.argmax(1).ne(y)
     for _ in range(restarts):
         adv = original.clone()
         if random_start:
@@ -20,7 +37,7 @@ def linf_attack(model, x, y, epsilon, steps=1, step_size=None, restarts=1, rando
         for iteration in range(steps + 1):
             adv = adv.detach().requires_grad_(iteration < steps)
             logits = model(adv)
-            loss = F.cross_entropy(logits, y, reduction='none')
+            loss = checked_loss(logits, y)
             with torch.no_grad():
                 success = logits.argmax(1).ne(y)
                 better = (success & ~best_success) | ((success == best_success) & (loss > best_loss))
@@ -28,7 +45,7 @@ def linf_attack(model, x, y, epsilon, steps=1, step_size=None, restarts=1, rando
                 best_loss[better] = loss.detach()[better]
                 best_success[better] = success[better]
             if iteration < steps:
-                grad, = torch.autograd.grad(loss.sum(), adv)
+                grad = checked_gradient(loss, adv)
                 adv = adv.detach() + alpha * grad.sign()
                 adv = torch.maximum(torch.minimum(adv, original + epsilon), original - epsilon).clamp(0, 1)
     return best.detach()
@@ -42,7 +59,7 @@ def generate(model, x, y, name, args):
     if name == 'fgsm':
         # FGSM is exactly one gradient step, without best-iterate selection.
         z = x.detach().clone().requires_grad_(True)
-        grad, = torch.autograd.grad(F.cross_entropy(model(z), y), z)
+        grad = checked_gradient(checked_loss(model(z), y), z)
         return (z.detach() + args.epsilon * grad.sign()).clamp(0, 1)
     if name == 'pgd':
         return linf_attack(model, x, y, args.epsilon, args.steps, args.step_size, args.restarts, True)

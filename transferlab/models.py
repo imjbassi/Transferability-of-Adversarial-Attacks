@@ -36,5 +36,8 @@ def load_checkpoint(path, device):
     if checkpoint.get('spec') != SPEC or checkpoint.get('classes') != CLASSES:
         raise ValueError('Expected a transferlab CIFAR-10 checkpoint with matching class order')
     model = CIFARModel(checkpoint['architecture'])
+    for key in ('mean', 'std'):
+        if not torch.equal(checkpoint['state_dict'].get(key, torch.empty(0)), getattr(model, key)):
+            raise ValueError('Checkpoint normalization does not match the CIFAR-10 specification')
     model.load_state_dict(checkpoint['state_dict'], strict=True)
     return model.to(device).eval(), checkpoint

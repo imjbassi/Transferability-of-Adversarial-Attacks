@@ -45,3 +45,24 @@ def test_fgsm_direction_and_pgd_success():
         linf_attack(Toy(), x, y, -1)
     with pytest.raises(ValueError):
         validate_perturbations(x, x + .3, 'fgsm', .2, 1.)
+
+
+@pytest.mark.parametrize('attack', ['fgsm', 'pgd'])
+def test_nonfinite_source_gradient_fails_closed(attack):
+    class Singular(nn.Module):
+        def forward(self, x):
+            v = ((x.flatten(1).mean(1) - .5) ** 2).sqrt()
+            return torch.stack([v, -v], dim=1)
+    a = args()
+    a.epsilon = 0
+    with pytest.raises(ValueError, match='gradient'):
+        generate(Singular(), torch.full((2, 3, 4, 4), .5), torch.zeros(2, dtype=torch.long), attack, a)
+
+
+def test_pgd_rejects_nonfinite_intermediate_iterate():
+    class Unstable(Toy):
+        def forward(self, x):
+            logits = super().forward(x)
+            return logits * (float('nan') if x.mean() < .5 else 1)
+    with pytest.raises(ValueError, match='logits'):
+        linf_attack(Unstable(), torch.full((2, 3, 4, 4), .55), torch.zeros(2, dtype=torch.long), .2)

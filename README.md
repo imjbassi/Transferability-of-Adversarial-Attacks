@@ -11,11 +11,11 @@ The earlier code evaluated ImageNet classifiers against CIFAR-10 labels and call
 
 ## What changed
 
-The code trains ten-class CIFAR-10 models, selects checkpoints on a held-out validation split, and places normalization inside each differentiable model. Attacks operate on raw pixels in `[0,1]`. FGSM, PGD, budgeted CW-L2, identity, and random-noise controls share the same evaluation pipeline. Each source attack is reused across every target. Outputs include checkpoint hashes, test indices, actual predictions, norm checks, denominators, and Wilson intervals. No replacement empirical results are embedded in this repository.
+The code trains ten-class CIFAR-10 models, selects checkpoints on a held-out validation split, and places normalization inside each differentiable model. Attacks operate on raw pixels in `[0,1]`. FGSM, PGD, budgeted CW-L2, identity, and random-noise controls share the same evaluation pipeline. Each source attack is reused across every target. Outputs include checkpoint hashes, test indices, actual predictions, norm checks, denominators, and Wilson intervals. No final replacement empirical findings are embedded in this repository; the [small real-data pilot](docs/PILOT.md) is execution validation only.
 
 ## Install
 
-Python 3.10 or newer is required. Python 3.11 is used in CI.
+Python 3.10–3.12 is required by this pinned environment. Python 3.11 is used in CI. On Windows, use `py -3.12 -m venv .venv` if the default Python is newer.
 
 ```bash
 python -m venv .venv
@@ -34,6 +34,20 @@ python -m pip install -e '.[test]'
 For a CUDA machine, install a compatible build of the same PyTorch/torchvision versions. Full multi-seed training and iterative attacks are substantial compute workloads. This repository does not claim they have been executed as part of the revision.
 
 ## Train
+
+### Run a small execution pilot first
+
+After installation, run:
+
+```bash
+python -m transferlab.pilot --output runs/pilot-01
+```
+
+This trains all three architectures for two epochs on 2,048 training images, selects checkpoints on 512 validation images, and evaluates 256 test images with clean/noise/FGSM/short PGD controls. It also runs a 32-image zero-budget check and an eight-image, five-step CW wiring check. Reduced subsets preserve the fixed split boundary. These deliberately undertrained checkpoints and weak attacks are **not final empirical evidence**. Each stage writes a log and timing to the output directory; choose a new directory for another run. Add `--device cpu` when CUDA is unavailable.
+
+See [the run guide](docs/RUNNING.md) for Windows setup, measured timings, and the distinction between the pilot and full study, and [the submission critique](docs/SUBMISSION_REVIEW.md) for remaining work.
+
+### Full training
 
 This complete command sequence trains one checkpoint per architecture. It downloads CIFAR-10, uses 45,000 training examples and 5,000 validation examples, and never selects a checkpoint on test performance.
 
@@ -75,7 +89,7 @@ Rates in JSON are fractions, while generated Markdown tables use percentages. Em
 
 ## Artifact outputs
 
-Each evaluation produces `manifest.json`, `predictions.csv`, `summary.json`, and, when an actual attack is selected, `example.pt`. The report command writes `table.md`. The manifest is marked complete only after evaluation finishes. The figure command labels the actual source predictions and scales the perturbation explicitly; it does not assume the selected example is successful.
+Each evaluation produces `manifest.json`, `predictions.csv`, `summary.json`, and, when an actual attack is selected, `example.pt`. The report command verifies the prediction checksum, recomputes summary metrics from CSV, and writes `table.md` with counts and norm diagnostics. The manifest is marked complete only after evaluation finishes. Shortened training and subset evaluations are labeled as pilots. The figure command labels the actual source predictions and scales the perturbation explicitly; it does not assume the selected example is successful.
 
 The legacy filenames now delegate to the corrected CLI. For example, `python FGSM_transfer.py --help` describes required checkpoint arguments. Historical results and figures are preserved under `archive/original/` and are not validation evidence.
 

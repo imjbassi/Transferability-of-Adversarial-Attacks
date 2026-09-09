@@ -35,11 +35,16 @@ def digest(path):
 def environment():
     try:
         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+        dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=normal'], text=True).strip())
     except (OSError, subprocess.CalledProcessError):
         commit = None
+        dirty = None
     return dict(python=platform.python_version(), torch=str(torch.__version__),
                 torchvision=str(torchvision.__version__), numpy=np.__version__,
                 cuda=torch.version.cuda, platform=platform.platform(), git_commit=commit,
+                git_dirty=dirty, cpu=platform.processor(),
+                gpu=[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
+                source_sha256={p.name: digest(p) for p in sorted(Path(__file__).parent.glob('*.py'))},
                 packages={name: importlib.metadata.version(name) for name in ['foolbox', 'eagerpy', 'scipy', 'matplotlib']})
 
 

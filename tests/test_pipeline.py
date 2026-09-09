@@ -1,6 +1,7 @@
 import csv
 import json
 import sys
+import pytest
 import torch
 from torch import nn
 from torch.utils.data import TensorDataset
@@ -38,3 +39,35 @@ def test_evaluation_and_report_preserve_counts(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, 'argv', ['report', str(run)])
     report.main()
     assert '100.00' in (run / 'table.md').read_text()
+    table = (run / 'table.md').read_text()
+    assert '[8/8]' in table and 'Pilot' in table and 'Max L2' in table
+    summaries = json.loads((run / 'summary.json').read_text())
+    summaries[0]['pair_transfer']['successes'] = 7
+    (run / 'summary.json').write_text(json.dumps(summaries))
+    with pytest.raises(ValueError, match='Summary'):
+        report.main()
+    with (run / 'predictions.csv').open('a') as f:
+        f.write('\n')
+    with pytest.raises(ValueError, match='checksum'):
+        report.main()
+
+
+def test_nonfinite_attacked_logits_are_rejected():
+    class Unstable(nn.Module):
+        def forward(self, x):
+            result = torch.zeros(len(x), 10)
+            if x.mean() < .5:
+                result[:, 0] = float('nan')
+            return result
+    model = Unstable()
+    assert evaluate.predict(model, torch.ones(2, 3, 4, 4)).shape == (2,)
+    with pytest.raises(ValueError, match='finite'):
+        evaluate.predict(model, torch.zeros(2, 3, 4, 4))
+
+
+@pytest.mark.parametrize('flag', ['--epsilon', '--step-size', '--l2-budget', '--cw-learning-rate'])
+@pytest.mark.parametrize('value', ['nan', 'inf'])
+def test_nonfinite_attack_arguments(monkeypatch, tmp_path, flag, value):
+    monkeypatch.setattr(sys, 'argv', ['evaluate', '--checkpoints', 'unused.pt', '--output', str(tmp_path), flag, value])
+    with pytest.raises(SystemExit):
+        evaluate.main()

@@ -30,4 +30,5 @@ def summarize(rows):
         pair_transfer=binomial(sum(r['target_adv'] != r['label'] for r in eligible), len(eligible)),
         conditional_transfer=binomial(sum(r['target_adv'] != r['label'] for r in source_success), len(source_success)),
         mean_l2=sum(r['l2'] for r in rows)/n,
+        max_l2=max(r['l2'] for r in rows),
         max_linf=max(r['linf'] for r in rows))

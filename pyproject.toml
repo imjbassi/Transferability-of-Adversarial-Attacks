@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "transferlab"
 version = "0.2.0"
 description = "Auditable CIFAR-10 adversarial transfer evaluation"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 dependencies = ["torch==2.6.0", "torchvision==0.21.0", "numpy==1.26.4", "foolbox==3.3.4", "matplotlib==3.9.4"]
 
 [project.optional-dependencies]

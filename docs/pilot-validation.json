@@ -1,0 +1,144 @@
+{
+  "environment": {
+    "python": "3.12.5",
+    "torch": "2.6.0+cu124",
+    "torchvision": "0.21.0+cu124",
+    "numpy": "1.26.4",
+    "cuda": "12.4",
+    "platform": "Windows-11-10.0.26100-SP0",
+    "git_commit": "1ab8e349876a8f8630a9665bf73c03554421d3db",
+    "git_dirty": true,
+    "cpu": "AMD64 Family 25 Model 97 Stepping 2, AuthenticAMD",
+    "gpu": [
+      "NVIDIA GeForce RTX 4070"
+    ],
+    "source_sha256": {
+      "__init__.py": "b99673eadacdc622b137572f3591025f672f2c96fe69bb2117e2dc436231f3bb",
+      "attacks.py": "8ed641733b35253c8ca15f5c97d6e1257d0ea6645bb15ecbc0fc03764eb0e44f",
+      "common.py": "22ced086ac43f9e11b0407a20cef0f1e50f16aeb8b54b6e2bf5d39113d237039",
+      "evaluate.py": "467f2fa5ecc3c264e75ce876da29748b3cf7a7a05d6880d299db497e35a59d1e",
+      "figure.py": "d6a81971e15eea7f15d9065ae479b8a7f556852a510060bab36e9d8220e8712b",
+      "metrics.py": "8f97b182b556e2aa58c78c0f9053ecda3f75768ca08b7064bb466c3726bb8a3e",
+      "models.py": "8bd3eabfd056244a60d9a9e0f7103f7783ef2b94f093048fb8b2719e38d5ab40",
+      "pilot.py": "5ca2fd17c430d0081ebedfa1dd901758b68a08d8a3b3b5fe50bf53efa6bc3ef3",
+      "report.py": "9e2c54bf4f2b023f73b7ebaf52ce2c8c2a69eb78e399f5e64209951ffdbf00d0",
+      "train.py": "0515882ae7ceb7ae1cb0cd6bced57f3d698049cd2ee20bf1a6dbf5d3256e6a57"
+    },
+    "packages": {
+      "foolbox": "3.3.4",
+      "eagerpy": "0.30.0",
+      "scipy": "1.17.1",
+      "matplotlib": "3.9.4"
+    }
+  },
+  "elapsed_seconds": 82.30777600000147,
+  "stages": [
+    {
+      "name": "train-resnet18",
+      "elapsed_seconds": 14.265925400075503,
+      "returncode": 0
+    },
+    {
+      "name": "train-vgg16",
+      "elapsed_seconds": 10.147971999947913,
+      "returncode": 0
+    },
+    {
+      "name": "train-mobilenet_v2",
+      "elapsed_seconds": 9.674073399975896,
+      "returncode": 0
+    },
+    {
+      "name": "evaluate-linf",
+      "elapsed_seconds": 11.845287699950859,
+      "returncode": 0
+    },
+    {
+      "name": "report-linf",
+      "elapsed_seconds": 5.142311700037681,
+      "returncode": 0
+    },
+    {
+      "name": "evaluate-zero",
+      "elapsed_seconds": 7.8539208000293,
+      "returncode": 0
+    },
+    {
+      "name": "report-zero",
+      "elapsed_seconds": 4.376180600025691,
+      "returncode": 0
+    },
+    {
+      "name": "evaluate-cw",
+      "elapsed_seconds": 8.69613890000619,
+      "returncode": 0
+    },
+    {
+      "name": "report-cw",
+      "elapsed_seconds": 4.7072719999123365,
+      "returncode": 0
+    },
+    {
+      "name": "figure",
+      "elapsed_seconds": 5.5825617999071255,
+      "returncode": 0
+    }
+  ],
+  "verification": {
+    "pilot": true,
+    "checks": {
+      "linf": {
+        "rows": 9216,
+        "groups": 36,
+        "predictions_sha256": "5375ffc5bd7578eaa14ea30eff5be981e25998d51fd810308eff0c800b2df8df"
+      },
+      "zero": {
+        "rows": 1152,
+        "groups": 36,
+        "predictions_sha256": "2029004c27d13a5a78b10ef1fc44f3d1d06718b070fbadb85fdcced1b1f2598f"
+      },
+      "cw": {
+        "rows": 72,
+        "groups": 9,
+        "predictions_sha256": "ceebe13149c0ea37607d2901ffbcb07525cebe4a96708e37497f56c454d417da"
+      }
+    },
+    "all_checks_passed": true,
+    "source_sha256": {
+      "__init__.py": "b99673eadacdc622b137572f3591025f672f2c96fe69bb2117e2dc436231f3bb",
+      "attacks.py": "8ed641733b35253c8ca15f5c97d6e1257d0ea6645bb15ecbc0fc03764eb0e44f",
+      "common.py": "22ced086ac43f9e11b0407a20cef0f1e50f16aeb8b54b6e2bf5d39113d237039",
+      "evaluate.py": "467f2fa5ecc3c264e75ce876da29748b3cf7a7a05d6880d299db497e35a59d1e",
+      "figure.py": "d6a81971e15eea7f15d9065ae479b8a7f556852a510060bab36e9d8220e8712b",
+      "metrics.py": "8f97b182b556e2aa58c78c0f9053ecda3f75768ca08b7064bb466c3726bb8a3e",
+      "models.py": "8bd3eabfd056244a60d9a9e0f7103f7783ef2b94f093048fb8b2719e38d5ab40",
+      "pilot.py": "5ca2fd17c430d0081ebedfa1dd901758b68a08d8a3b3b5fe50bf53efa6bc3ef3",
+      "report.py": "9e2c54bf4f2b023f73b7ebaf52ce2c8c2a69eb78e399f5e64209951ffdbf00d0",
+      "train.py": "0515882ae7ceb7ae1cb0cd6bced57f3d698049cd2ee20bf1a6dbf5d3256e6a57"
+    },
+    "note": "Execution validation only; undertrained models and short attacks. Checkpoints remain local and are excluded from the archive."
+  },
+  "checkpoints": {
+    "resnet18-seed0": {
+      "path": "runs\\pilot-20260909\\resnet18\\best.pt",
+      "sha256": "3b8de8a285f9395e85da08f87f0b35ee2fb90b825eafe6086a02d9476366feab",
+      "epoch": 2,
+      "pilot": true,
+      "validation_accuracy": 0.115234375
+    },
+    "vgg16-seed0": {
+      "path": "runs\\pilot-20260909\\vgg16\\best.pt",
+      "sha256": "398f4fc6262c0b95896ab1ac47dfe9645dc2bb9241ee253c3766de3e5c559ad1",
+      "epoch": 1,
+      "pilot": true,
+      "validation_accuracy": 0.07421875
+    },
+    "mobilenet_v2-seed0": {
+      "path": "runs\\pilot-20260909\\mobilenet_v2\\best.pt",
+      "sha256": "a548aae72e8b3f3b4f1aa6afa8ce2bf1ad64c7b495d75bd23588e22f07376a49",
+      "epoch": 2,
+      "pilot": true,
+      "validation_accuracy": 0.146484375
+    }
+  }
+}

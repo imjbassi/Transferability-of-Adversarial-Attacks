@@ -1,5 +1,6 @@
 import argparse
 import csv
+import math
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -12,6 +13,13 @@ from .attacks import generate, validate_perturbations
 from .common import digest, environment, seed_all, write_json
 from .metrics import summarize
 from .models import load_checkpoint
+
+
+def predict(model, x):
+    logits = model(x)
+    if logits.shape != (len(x), 10) or not torch.isfinite(logits).all():
+        raise ValueError('Models must return finite CIFAR-10 logits')
+    return logits.argmax(1)
 
 
 def main():
@@ -33,6 +41,8 @@ def main():
     p.add_argument('--cw-learning-rate', type=float, default=0.01)
     p.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu')
     a = p.parse_args()
+    if not all(math.isfinite(v) for v in [a.epsilon, a.l2_budget, a.step_size, a.cw_learning_rate]):
+        p.error('Attack parameters must be finite')
     if not 1 <= a.samples <= 10000 or a.batch_size < 1 or not 0 <= a.epsilon <= 1:
         p.error('Invalid sample count, batch size, or epsilon')
     if min(a.steps, a.restarts, a.cw_steps, a.cw_search) < 1 or min(a.l2_budget, a.step_size) < 0 or a.cw_learning_rate <= 0:
@@ -48,12 +58,13 @@ def main():
             p.error(f'Duplicate model identifier: {key}')
         models[key] = model
         checkpoints[key] = dict(path=str(path), sha256=digest(path), epoch=info['epoch'],
+                                pilot=info.get('pilot', False),
                                 validation_accuracy=info['validation_accuracy'])
     dataset = datasets.CIFAR10(a.data, train=False, download=True, transform=transforms.ToTensor())
     indices = torch.randperm(len(dataset), generator=torch.Generator().manual_seed(a.seed))[:a.samples].tolist()
     loader = DataLoader(Subset(dataset, indices), batch_size=a.batch_size, shuffle=False, num_workers=0)
     a.output.mkdir(parents=True, exist_ok=False)
-    manifest = dict(status='running', config={k: [str(v) for v in value] if k == 'checkpoints' else str(value) if isinstance(value, Path) else value for k, value in vars(a).items()},
+    manifest = dict(status='running', pilot=a.samples < 10000 or any(c['pilot'] for c in checkpoints.values()), config={k: [str(v) for v in value] if k == 'checkpoints' else str(value) if isinstance(value, Path) else value for k, value in vars(a).items()},
                     environment=environment(), checkpoints=checkpoints, test_indices=indices)
     write_json(a.output / 'manifest.json', manifest)
     groups, example_saved, started = defaultdict(list), False, time.time()
@@ -64,20 +75,19 @@ def main():
         offset = 0
         for x, y in loader:
             batch_indices = indices[offset:offset+len(y)]
+            labels = y.tolist()
             x, y = x.to(a.device), y.to(a.device)
             with torch.no_grad():
                 clean = {}
                 for name, model in models.items():
-                    logits = model(x)
-                    if logits.shape != (len(y), 10) or not torch.isfinite(logits).all():
-                        raise ValueError('Models must return finite CIFAR-10 logits')
-                    clean[name] = logits.argmax(1)
+                    clean[name] = predict(model, x).cpu()
             for source, model in models.items():
                 for attack in a.attacks:
                     adv = generate(model, x, y, attack, a)
                     linf, l2 = validate_perturbations(x, adv, attack, a.epsilon, a.l2_budget)
+                    linf, l2 = linf.cpu(), l2.cpu()
                     with torch.no_grad():
-                        attacked = {name: net(adv).argmax(1) for name, net in models.items()}
+                        attacked = {name: predict(net, adv).cpu() for name, net in models.items()}
                     if not example_saved and attack not in ('clean', 'noise'):
                         torch.save(dict(clean=x[:1].cpu(), adversarial=adv[:1].cpu(), label=y[:1].cpu(),
                                         index=batch_indices[0], source=source, attack=attack,
@@ -86,7 +96,7 @@ def main():
                         example_saved = True
                     for target in models:
                         for i, index in enumerate(batch_indices):
-                            row = dict(index=index, label=int(y[i]), source=source, target=target, attack=attack,
+                            row = dict(index=index, label=labels[i], source=source, target=target, attack=attack,
                                        source_clean=int(clean[source][i]), target_clean=int(clean[target][i]),
                                        source_adv=int(attacked[source][i]), target_adv=int(attacked[target][i]),
                                        linf=float(linf[i]), l2=float(l2[i]))

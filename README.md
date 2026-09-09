@@ -1,75 +1,92 @@
-# Evaluating Transferability of Adversarial Attacks Across Machine Learning Models
+# Adversarial transfer on CIFAR-10
 
-This project benchmarks the cross-model transferability of adversarial attacks on convolutional neural networks trained on CIFAR-10. It investigates how well adversarial examples generated for one model architecture can deceive others, using standard attack methods.
+**Status: corrected research implementation and revised methodological draft. New CIFAR-10 experiments are required before an empirical submission.**
 
-## Overview
+The earlier code evaluated ImageNet classifiers against CIFAR-10 labels and called unconditional target error a transfer success rate. Those results do not establish adversarial transfer. The previous claims of approximately 90% clean accuracy and near-100% transfer are not supported by the released artifacts. See [the audit](docs/AUDIT.md).
 
-Adversarial attacks can cause machine learning models to misclassify inputs by applying small, imperceptible perturbations. A key concern is **transferability**—the ability of adversarial examples to fool models they were not explicitly crafted for.
+- [Revised paper (PDF)](paper/main.pdf)
+- [Complete editable LaTeX manuscript](paper/main.tex)
+- [Experiment and submission requirements](docs/EXPERIMENTS.md)
+- [Validation record](docs/VALIDATION.md)
 
-This study evaluates three popular CNN architectures:
-- ResNet-18
-- VGG16
-- MobileNetV2
+## What changed
 
-We examine three major attack methods:
-- Fast Gradient Sign Method (FGSM)
-- Projected Gradient Descent (PGD)
-- Carlini-Wagner (CW)
+The code trains ten-class CIFAR-10 models, selects checkpoints on a held-out validation split, and places normalization inside each differentiable model. Attacks operate on raw pixels in `[0,1]`. FGSM, PGD, budgeted CW-L2, identity, and random-noise controls share the same evaluation pipeline. Each source attack is reused across every target. Outputs include checkpoint hashes, test indices, actual predictions, norm checks, denominators, and Wilson intervals. No replacement empirical results are embedded in this repository.
 
-## Paper
+## Install
 
-**Title:** Evaluating Transferability of Adversarial Attacks Across Machine Learning Models  
-**Author:** Jaiveer Bassi  
-**Preprint:** [TechRxiv link pending]  
-**Institution:** Grand Canyon University
+Python 3.10 or newer is required. Python 3.11 is used in CI.
 
-## Key Findings
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[test]'
+python -m pytest -q
+```
 
-- All three attacks (FGSM, PGD, CW) exhibit near-complete transferability across models.
-- Transfer success rates are frequently above 99% regardless of model architecture.
-- This challenges the notion that iterative attacks are less transferable than simple one-step attacks.
-- VGG16 showed slightly lower cross-architecture vulnerability compared to ResNet-18 and MobileNetV2.
+On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`. For CPU-only use, install the pinned CPU wheels before installing the project:
 
-## Experiment Setup
+```bash
+python -m pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -e '.[test]'
+```
 
-- **Dataset:** CIFAR-10
-- **Models:** ResNet-18, VGG16, MobileNetV2 (all trained to ~90% test accuracy)
-- **Attacks:** FGSM (ϵ=8/255), PGD (10 steps, α=2/255), CW (L2-norm variant)
-- **Metrics:** Attack Success Rate (ASR), Transfer Success Rate (TSR)
+For a CUDA machine, install a compatible build of the same PyTorch/torchvision versions. Full multi-seed training and iterative attacks are substantial compute workloads. This repository does not claim they have been executed as part of the revision.
 
-## Transfer Success Rates (Black-box)
+## Train
 
-| Attack Type | Source Model   | Target Model    | Transfer Success Rate (%) |
-|-------------|----------------|-----------------|----------------------------|
-| FGSM        | ResNet-18      | VGG16           | 60.0                       |
-| FGSM        | ResNet-18      | MobileNetV2     | 65.0                       |
-| FGSM        | VGG16          | ResNet-18       | 55.0                       |
-| PGD         | ResNet-18      | VGG16           | 99.50                      |
-| PGD         | VGG16          | MobileNetV2     | 99.90                      |
-| PGD         | MobileNetV2    | ResNet-18       | 99.90                      |
-| CW          | ResNet-18      | VGG16           | 99.90                      |
-| CW          | VGG16          | MobileNetV2     | 99.90                      |
-| CW          | MobileNetV2    | ResNet-18       | 99.90                      |
+This complete command sequence trains one checkpoint per architecture. It downloads CIFAR-10, uses 45,000 training examples and 5,000 validation examples, and never selects a checkpoint on test performance.
 
-## Visual Example
+```bash
+python -m transferlab.train --architecture resnet18 --seed 0 --output checkpoints/resnet18-0
+python -m transferlab.train --architecture vgg16 --seed 0 --output checkpoints/vgg16-0
+python -m transferlab.train --architecture mobilenet_v2 --seed 0 --output checkpoints/mobilenet_v2-0
+```
 
-![Figure 1: Adversarial Example](./Figure_1.png)
+Repeat with seeds 1 and 2 for the planned multi-seed study. Output directories must be new, preventing accidental overwrite of existing runs. Training defaults to 200 epochs. A shorter run can test execution but must not be presented as a final benchmark.
 
-The right image is perturbed but visually indistinguishable from the left original. Despite this, it causes incorrect predictions in multiple models.
+## Evaluate and make a table
 
-## Implications
+```bash
+python -m transferlab.evaluate --checkpoints checkpoints/resnet18-0/best.pt checkpoints/vgg16-0/best.pt checkpoints/mobilenet_v2-0/best.pt --attacks clean noise fgsm pgd --samples 10000 --seed 0 --epsilon 0.03137254901960784 --steps 40 --step-size 0.00784313725490196 --restarts 5 --output runs/linf-seed0
+python -m transferlab.report runs/linf-seed0
+python -m transferlab.figure runs/linf-seed0/example.pt --output runs/linf-seed0/example.png
+```
 
-- Model architecture diversity alone is insufficient for defense.
-- Transferability exposes systems to black-box attacks without requiring model access.
-- Adversarial training and ensemble-based methods are essential for mitigating these risks.
+CW uses a **separate L2 budget** and must be reported separately:
 
-## Future Work
+```bash
+python -m transferlab.evaluate --checkpoints checkpoints/resnet18-0/best.pt checkpoints/vgg16-0/best.pt checkpoints/mobilenet_v2-0/best.pt --attacks cw --samples 10000 --seed 0 --l2-budget 1.0 --cw-steps 1000 --cw-search 9 --output runs/cw-seed0
+python -m transferlab.report runs/cw-seed0
+```
 
-- Extend to transformer and hybrid architectures
-- Analyze targeted attack transferability
-- Examine effect of adversarial training on cross-model robustness
-- Explore shared feature vulnerabilities in latent space
+For a pilot, use `--samples 1000` and a different output directory. Pilot results are not full-test results. For a zero-budget control, use `--epsilon 0 --attacks clean fgsm pgd`. A CW radius is not numerically comparable to an L-infinity radius.
 
-## License
+## Metrics
 
-This research code and documentation are released under an open license for academic and non-commercial use. See `LICENSE` for details.
+| Output | Numerator | Denominator |
+|---|---|---|
+| Source ASR | Source attacked errors among source-clean-correct inputs | Source-clean-correct inputs |
+| Pair transfer | Target attacked errors among jointly clean-correct inputs | Source and target jointly clean-correct inputs |
+| Conditional transfer | Target attacked errors among jointly clean-correct inputs where the source attack succeeded | Jointly clean-correct inputs where the source attack succeeded |
+| Adversarial accuracy | Correct target predictions on attacked inputs | All evaluated inputs |
+
+Rates in JSON are fractions, while generated Markdown tables use percentages. Empty denominators produce JSON `null`, not zero. Diagonal rows are white-box controls. A diagonal conditional-transfer rate of one is a consequence of conditioning, not evidence of black-box transfer. Wilson intervals condition on fixed checkpoints and do not account for training-seed variability.
+
+## Artifact outputs
+
+Each evaluation produces `manifest.json`, `predictions.csv`, `summary.json`, and, when an actual attack is selected, `example.pt`. The report command writes `table.md`. The manifest is marked complete only after evaluation finishes. The figure command labels the actual source predictions and scales the perturbation explicitly; it does not assume the selected example is successful.
+
+The legacy filenames now delegate to the corrected CLI. For example, `python FGSM_transfer.py --help` describes required checkpoint arguments. Historical results and figures are preserved under `archive/original/` and are not validation evidence.
+
+## Build the paper
+
+```bash
+make -C paper
+```
+
+A standard LaTeX installation with `pdflatex` is required. The manuscript uses a generic two-column format. Choose a workshop and adapt its official template, anonymization rules, and page limit before submission.
+
+## Licensing
+
+The previous README referred to a `LICENSE` file that was not present. No new license has been assigned in this revision; the repository owner must choose the intended terms before describing the project as open-source or granting reuse permissions.

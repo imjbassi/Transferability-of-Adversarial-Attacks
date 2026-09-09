@@ -1,0 +1,95 @@
+\documentclass[10pt,twocolumn]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,url}
+\usepackage[hidelinks]{hyperref}
+\title{Evaluating Adversarial Transfer on CIFAR-10:\\A Corrected Measurement Protocol and Reproducibility Audit}
+\author{Jaiveer Bassi\\Grand Canyon University\\\texttt{jaiveerbassi@yahoo.com}}
+\date{Revised research draft, September 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+An adversarial transfer experiment must distinguish errors caused by a perturbation from errors already present on clean inputs. We audit an earlier CIFAR-10 transfer study involving ResNet-18, VGG16, and MobileNetV2, and identify a mismatch between its stated methodology and released implementation: the scripts evaluate ImageNet classifiers directly against CIFAR-10 class indices and report unconditional adversarial error as transfer success. Consequently, the previously reported near-complete transfer rates cannot support conclusions about cross-architecture vulnerability. We provide a corrected experimental protocol and implementation with dataset-compatible checkpoints, differentiable preprocessing, matched source-target samples, explicit norm budgets, conditional metrics, and auditable per-example outputs. An algebraic decomposition demonstrates why unconditional error can be large even when an attack causes no new errors. This revision is a methodological correction and experimental specification; it does not report newly measured CIFAR-10 transfer rates or claim an attack-ranking result. A complete empirical submission requires executing the specified training and evaluation suite and assessing variability across independently trained checkpoints.
+\end{abstract}
+
+\section{Introduction}
+Adversarial examples expose a gap between ordinary predictive accuracy and behavior under deliberately chosen perturbations. FGSM provides a gradient-based construction \cite{goodfellow}, while iterative optimization enables broader searches within a threat model \cite{madry,carlini}. Transfer attacks use a source model to construct an input that is subsequently evaluated on another model. The target supplies neither gradients nor feedback during construction.
+
+Transferability is an empirical property of a source, a target, an attack, and an evaluation population. It cannot be inferred from a high error rate alone. If the target already misclassifies most clean inputs, an unchanged input may appear to be a successful attack under an unconditional metric. A mismatch between label spaces makes this problem more severe.
+
+This revision replaces the earlier manuscript's numerical conclusions with a reproducibility audit and an executable protocol. Its contributions are: (1) identification of implementation defects that invalidate the original interpretation; (2) precise definitions separating clean accuracy, attack success, and transfer; and (3) a checkpoint-based implementation that records the information needed to independently recompute these quantities. These are methodological contributions, not evidence of a new attack or a new empirical transfer phenomenon.
+
+\section{Background and scope}
+Goodfellow et al. connect adversarial vulnerability to high-dimensional linear behavior and introduce FGSM \cite{goodfellow}. Madry et al. formulate robustness using optimization over a perturbation set \cite{madry}. Carlini and Wagner develop optimization-based attacks and demonstrate the importance of careful evaluation \cite{carlini}. Liu et al. investigate transfer and black-box attacks \cite{liu}. These studies motivate examining source attack strength separately from target transfer. None establishes that one attack must universally transfer better than another.
+
+The present protocol concerns untargeted digital attacks against deterministic image classifiers. It does not evaluate physical attacks, detection systems, adversarially trained defenses, or deployment security. CIFAR-10 results would not by themselves justify claims about autonomous vehicles or face recognition. The selected architectures are established CNN baselines, not a comprehensive representation of contemporary vision systems.
+
+\section{Audit of the earlier implementation}
+The audit refers to repository commit \texttt{58f8102} and its four experiment scripts. The accompanying manuscript states that models were trained on CIFAR-10 and reached approximately 90\% clean accuracy. The released scripts instead instantiate ImageNet-pretrained torchvision models, without CIFAR-10 training or replacement of their 1,000-class output heads. They compare the resulting output indices directly with CIFAR-10 labels numbered 0 through 9. The two sets of indices do not share the required class semantics.
+
+\subsection{Preprocessing and budgets}
+The transfer scripts feed raw CIFAR-10 tensors to the ImageNet models without their expected preprocessing. The figure script applies a different normalization and measures its budget in that transformed space. Thus, its perturbation size is not directly interchangeable with a budget in raw pixels. The PGD script uses a relative step size of 0.01, rather than the manuscript's stated absolute step of $2/255$. The CW call uses only ten optimization steps, which does not establish convergence. Its $L_2$ budget must also be distinguished from the $L_\infty$ budgets of FGSM and PGD.
+
+\subsection{Sampling and success definitions}
+The table scripts count every target error on attacked inputs as transfer success, without checking whether either model was initially correct. They do not preserve a record of source success. Some experiments select an unseeded subset of 1,000 images, despite broader full-test-set descriptions. Repeated source-target calls regenerate attacks rather than explicitly reusing one recorded source perturbation across all targets.
+
+These observations establish a mismatch between the published explanation and the released artifact. They do not reconstruct unavailable training histories or prove the origin of every previously reported table entry. No compatible checkpoints or per-example result logs were present in the audited repository. The earlier rates and architecture rankings are therefore excluded from the revised empirical record.
+
+\section{Why error is not attack success}
+Let $f_t$ be the target predictor, $y$ the true label, and $A_s(x)$ an attack constructed using source $s$. Define clean error $e_t=\Pr[f_t(x)\ne y]$, newly induced error $q=\Pr[f_t(A_s(x))\ne y\mid f_t(x)=y]$, and persistence of existing error $r=\Pr[f_t(A_s(x))\ne y\mid f_t(x)\ne y]$. By partitioning on clean correctness,
+\begin{equation}
+\Pr[f_t(A_s(x))\ne y]=(1-e_t)q+e_t r.
+\end{equation}
+For the identity attack, $q=0$ and $r=1$, so adversarial error equals clean error. An illustrative classifier with 99\% clean error therefore has 99\% adversarial error under an identity attack and zero newly induced errors. This is an algebraic example, not a measurement from CIFAR-10.
+
+\subsection{Recorded estimands}
+For a fixed evaluation set of $N$ examples, let $C_s(i)$ and $C_t(i)$ indicate clean correctness. Let $S_s(i)$ and $S_t(i)$ indicate misclassification of the source-generated attacked input. Define the pairwise eligible set $E_{st}=\{i:C_s(i)\land C_t(i)\}$ and successful-source subset $F_{st}=\{i\in E_{st}:S_s(i)\}$. We report
+\begin{align}
+\operatorname{ASR}_s &= \frac{\sum_{i:C_s(i)} S_s(i)}{\sum_i C_s(i)},\\
+\operatorname{PTR}_{st} &= \frac{\sum_{i\in E_{st}} S_t(i)}{|E_{st}|},\\
+\operatorname{CTR}_{st} &= \frac{\sum_{i\in F_{st}} S_t(i)}{|F_{st}|}.
+\end{align}
+PTR measures target failure on jointly clean-correct inputs whether or not the source attack succeeded. CTR measures transfer conditional on source success. Both are needed: a high CTR can describe a small, selected subset. The diagonal is a white-box control; its CTR is tautologically one whenever its denominator is positive. It must not be interpreted as black-box evidence.
+
+All fractions include numerator and denominator counts. An empty denominator is undefined, not zero. Clean accuracy and attacked accuracy on the full evaluation set are also reported. Wilson 95\% intervals describe uncertainty under a binomial sampling interpretation for fixed checkpoints; they are descriptive when evaluating the entire finite CIFAR-10 test set and do not measure variability across training runs. Pairwise eligibility sets differ, so raw rates across model pairs are not strictly matched-population comparisons.
+
+\section{Corrected experimental protocol}
+\subsection{Data and model training}
+The pipeline uses the standard CIFAR-10 class order \cite{cifar}. A fixed split seed of 1729 partitions the 50,000 training images into 45,000 training and 5,000 validation images. Validation data receive no random augmentation. Training uses random crops with four-pixel padding and random horizontal flips. The 10,000 test images are reserved for final evaluation; checkpoint selection uses validation accuracy only.
+
+All networks have ten output classes and are initialized without ImageNet weights. The ResNet-18 stem uses a $3\times3$ convolution at stride one and no initial max pool. VGG16 uses its convolutional feature stack, global $1\times1$ pooling, and a single 512-to-10 linear classifier. MobileNetV2 changes its initial convolution to stride one. These adaptations, especially the compact VGG classifier, must be stated when comparing with other implementations.
+
+Inputs to the attack interface are floating-point pixels in $[0,1]$. Channel normalization with mean $(0.4914,0.4822,0.4465)$ and standard deviation $(0.2470,0.2435,0.2616)$ occurs inside the model, so gradients include preprocessing while perturbation budgets remain in raw-pixel coordinates. Checkpoints contain architecture, class order, split indices, training seed, selected epoch, and model state. Evaluation rejects incompatible checkpoint metadata.
+
+The specified initial training recipe uses 200 epochs, SGD with momentum 0.9, initial learning rate 0.1, weight decay $5\times10^{-4}$, cosine learning-rate decay, and batch size 128. This is a reproducible starting recipe, not a guarantee of any particular accuracy. The planned primary runs use independent training seeds 0, 1, and 2. Architecture-specific tuning, if needed, must use validation data and be documented before test evaluation.
+
+\subsection{Attacks and controls}
+FGSM uses one signed cross-entropy gradient step with projection into the pixel range. PGD uses random initialization within the intersection of the pixel range and the $L_\infty$ ball, 40 steps, absolute step size $2/255$, and five restarts at the primary budget $8/255$. Across iterates and restarts, the implementation prioritizes source misclassification, then larger source loss. Target predictions never influence this selection. This source-selected construction may differ from final-iterate PGD in its transfer behavior, so the selection rule is part of the attack specification.
+
+The clean control leaves inputs unchanged. The random-noise control samples independent uniform perturbations within the same $L_\infty$ budget and clips to the pixel range. A separate CW-$L_2$ evaluation uses Foolbox \cite{foolbox} with 1,000 iterations, nine binary-search steps, learning rate 0.01, zero confidence, disabled early stopping, and a declared $L_2$ radius of 1.0. The returned budget-clipped candidate is evaluated on all models. This is budgeted CW evaluation, not an assertion that a minimum-norm solution was found. CW outcomes are presented separately from $L_\infty$ outcomes; equal numeric radii across norms are not equal threat models.
+
+For every source and attack, the same generated inputs are evaluated on every target, including the source. Models remain in evaluation mode. Runtime checks reject nonfinite pixels, invalid pixel ranges, and norm violations. A saved example records its test index, true label, predictions, and actual perturbation. Visualization does not presume attack success or establish perceptual invisibility.
+
+\subsection{Reproducibility and planned sensitivity analysis}
+A seeded permutation specifies test indices, and the identical ordered sample list is used for every pair. The final study should use the full test set. A 1,000-example subset is suitable for a clearly labeled pilot only. Each completed run saves arguments, software versions, commit identifier, checkpoint SHA-256 hashes, test indices, elapsed time, clean and attacked per-example predictions, and per-example $L_2$ and $L_\infty$ norms. Tables are generated from measured summaries rather than embedded constants.
+
+The planned sensitivity analysis includes $L_\infty$ radii $0,2/255,4/255,8/255$, PGD step counts 10, 40, and 100, and restart counts 1 and 5. Step sizes must be recorded for every budget. CW requires an independent iteration and radius sensitivity study. Attack hyperparameters must not be selected to maximize target transfer using the final test set. Training-seed results should be shown individually and summarized across runs; pooling them as independent images understates uncertainty because the same test examples recur. Paired comparisons should use the same image indices and common eligibility sets, with paired resampling if inferential comparisons are made.
+
+\section{Evidence status and submission requirements}
+This manuscript contains an implementation audit, metric definitions, and an executable experiment specification. It contains no replacement CIFAR-10 accuracy, transfer matrix, attack ranking, or defense-effectiveness result. Unit tests and synthetic checks, when passing, establish properties of the implementation rather than scientific performance on the target dataset.
+
+Before an empirical workshop submission, the artifact must include trained checkpoints, complete manifests, clean accuracies, source ASRs, full transfer matrices with denominators, perturbation diagnostics, seed variability, and attack-strength sensitivity results. Any weakly trained model must be identified rather than silently excluded. Differences in architecture, capacity, optimization, and clean accuracy confound architecture-only causal interpretations. An all-model jointly correct subset can supplement pairwise metrics but introduces another selection condition that must be reported.
+
+The current contribution is limited to a correction of this repository and a protocol using established methods. A broader reproducibility claim would require auditing additional artifacts; a new empirical claim requires running the protocol. Venue-specific formatting, anonymization, related-work coverage, and artifact requirements remain to be selected for a named workshop.
+
+\section{Conclusion}
+The original released code does not support the claim of near-complete adversarial transfer among CIFAR-10-trained models. Correct measurement requires compatible label spaces, known clean performance, explicit threat models, and denominators that exclude pre-existing errors. The revised pipeline makes these requirements inspectable and provides a path to a defensible empirical study. Conclusions about attack rankings and architectural diversity are deferred until corrected measurements are available.
+
+\begin{thebibliography}{6}
+\bibitem{goodfellow} I. J. Goodfellow, J. Shlens, and C. Szegedy. Explaining and Harnessing Adversarial Examples. ICLR, 2015. \url{https://arxiv.org/abs/1412.6572}.
+\bibitem{madry} A. Madry, A. Makelov, L. Schmidt, D. Tsipras, and A. Vladu. Towards Deep Learning Models Resistant to Adversarial Attacks. ICLR, 2018. \url{https://arxiv.org/abs/1706.06083}.
+\bibitem{carlini} N. Carlini and D. Wagner. Towards Evaluating the Robustness of Neural Networks. IEEE Symposium on Security and Privacy, 2017. \url{https://arxiv.org/abs/1608.04644}.
+\bibitem{liu} Y. Liu, X. Chen, C. Liu, and D. Song. Delving into Transferable Adversarial Examples and Black-box Attacks. ICLR, 2017. \url{https://arxiv.org/abs/1611.02770}.
+\bibitem{cifar} A. Krizhevsky. Learning Multiple Layers of Features from Tiny Images. Technical report, University of Toronto, 2009. \url{https://www.cs.toronto.edu/~kriz/cifar.html}.
+\bibitem{foolbox} J. Rauber, R. Zimmermann, M. Bethge, and W. Brendel. Foolbox Native: Fast Adversarial Attacks to Benchmark the Robustness of Machine Learning Models in PyTorch, TensorFlow, and JAX. JOSS, 5(53):2607, 2020. \url{https://doi.org/10.21105/joss.02607}.
+\end{thebibliography}
+\end{document}

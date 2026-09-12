@@ -8,8 +8,10 @@ import argparse
 import csv
 import json
 import statistics
+from collections import defaultdict
 from pathlib import Path
 
+from .common import digest
 from .report import verified_results
 
 
@@ -74,6 +76,52 @@ def lookup(rows, source, target, attack="pgd"):
     return matches[0]
 
 
+def conditioning_rows(path, manifest, seed):
+    predictions = path / "predictions.csv"
+    if digest(predictions) != manifest["predictions_sha256"]:
+        raise ValueError(f"Prediction checksum mismatch in {path}")
+    groups = defaultdict(lambda: dict(eligible=0, source_success=0, target_failure=0,
+                                      both=0, failed_source_target_failure=0))
+    with predictions.open(newline="") as handle:
+        for row in csv.DictReader(handle):
+            if row["attack"] != "pgd" or row["source"] == row["target"]:
+                continue
+            label = int(row["label"])
+            if int(row["source_clean"]) != label or int(row["target_clean"]) != label:
+                continue
+            source_success = int(row["source_adv"]) != label
+            target_failure = int(row["target_adv"]) != label
+            item = groups[architecture_name(row["source"]), architecture_name(row["target"])]
+            item["eligible"] += 1
+            item["source_success"] += source_success
+            item["target_failure"] += target_failure
+            item["both"] += source_success and target_failure
+            item["failed_source_target_failure"] += (not source_success) and target_failure
+    results = []
+    for (source, target), item in groups.items():
+        failed = item["eligible"] - item["source_success"]
+        results.append({
+            "seed": seed,
+            "source": source,
+            "target": target,
+            **item,
+            "source_failure": failed,
+            "pair_source_asr_percent": percent(item["source_success"] / item["eligible"]),
+            "ptr_percent": percent(item["target_failure"] / item["eligible"]),
+            "ctr_percent": percent(item["both"] / item["source_success"]),
+            "failed_source_target_error_percent": percent(
+                item["failed_source_target_failure"] / failed) if failed else None,
+        })
+    return results
+
+
+def architecture_name(model_name):
+    for name in ARCHITECTURES:
+        if model_name.startswith(name + "-seed"):
+            return name
+    raise ValueError(f"Unrecognized model name: {model_name}")
+
+
 def load_sensitivity(path, expected_seed, steps, restarts, epsilon, verify_predictions):
     manifest = json.loads((path / "manifest.json").read_text())
     config = manifest["config"]
@@ -102,15 +150,23 @@ def main():
         action="store_true",
         help="recompute every summary from checksum-verified prediction CSVs",
     )
+    parser.add_argument(
+        "--lr-matched-run",
+        type=Path,
+        help="optional seed-0 8/255 run with all three checkpoints trained at LR 0.01",
+    )
     args = parser.parse_args()
 
     loaded = {}
     provenance = []
+    conditioning = []
     for budget, pattern in BUDGET_RUNS.items():
         for seed in range(3):
             path = args.runs / pattern.format(seed=seed)
             manifest, rows = load_run(path, seed, budget, args.verify_predictions)
             loaded[budget, seed] = rows
+            if budget == 2:
+                conditioning.extend(conditioning_rows(path, manifest, seed))
             provenance.append({
                 "run": str(path),
                 "commit": manifest["environment"].get("git_commit"),
@@ -219,10 +275,63 @@ def main():
         writer = csv.DictWriter(handle, fieldnames=sensitivity[0].keys())
         writer.writeheader()
         writer.writerows(sensitivity)
+    with (args.output / "conditioning_decomposition.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=conditioning[0].keys())
+        writer.writeheader()
+        writer.writerows(conditioning)
+
+    lr_matched = []
+    if args.lr_matched_run:
+        matched_manifest, matched_rows = load_run(
+            args.lr_matched_run, 0, 8, args.verify_predictions)
+        expected_suffixes = {
+            "resnet18-seed0": "lr-matched-sensitivity\\resnet18-seed0-lr001\\best.pt",
+            "vgg16-seed0": "vgg-tuning\\vgg16-seed0-lr001\\best.pt",
+            "mobilenet_v2-seed0": "lr-matched-sensitivity\\mobilenet_v2-seed0-lr001\\best.pt",
+        }
+        for name, suffix in expected_suffixes.items():
+            checkpoint_path = matched_manifest["checkpoints"][name]["path"].replace("/", "\\")
+            if not checkpoint_path.endswith(suffix):
+                raise ValueError(f"Unexpected matched-LR checkpoint for {name}: {checkpoint_path}")
+        for source_arch in ARCHITECTURES:
+            for target_arch in ARCHITECTURES:
+                if source_arch == target_arch:
+                    continue
+                source = f"{source_arch}-seed0"
+                target = f"{target_arch}-seed0"
+                baseline = lookup(loaded[8, 0], source, target)
+                matched = lookup(matched_rows, source, target)
+                lr_matched.append({
+                    "source": source_arch,
+                    "target": target_arch,
+                    "baseline_ptr_percent": percent(baseline["pair_transfer"]["rate"]),
+                    "matched_lr_ptr_percent": percent(matched["pair_transfer"]["rate"]),
+                    "difference_points": percent(
+                        matched["pair_transfer"]["rate"] - baseline["pair_transfer"]["rate"]),
+                })
+        with (args.output / "lr_matched_sensitivity.csv").open("w", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=lr_matched[0].keys())
+            writer.writeheader()
+            writer.writerows(lr_matched)
+
+    conditioning_aggregates = {}
+    for source in ARCHITECTURES:
+        for target in ARCHITECTURES:
+            if source == target:
+                continue
+            selected = [r for r in conditioning if r["source"] == source
+                        and r["target"] == target]
+            conditioning_aggregates[f"{source}:{target}"] = {
+                key: mean_range([r[key] for r in selected])
+                for key in ("pair_source_asr_percent", "ptr_percent", "ctr_percent",
+                            "failed_source_target_error_percent")
+            }
 
     payload = {
         "clean_accuracy_percent": {a: mean_range(v) for a, v in clean.items()},
         "attack_aggregates": aggregates,
+        "conditioning_decomposition_2of255_pgd": conditioning_aggregates,
+        "lr_matched_sensitivity_8of255_seed0": lr_matched or None,
         "max_abs_8of255_strong_minus_primary_ptr_points": max(
             abs(r["difference_points"]) for r in sensitivity if r["budget_over_255"] == 8),
         "max_abs_2of255_strong_minus_primary_ptr_points": max(
@@ -269,6 +378,26 @@ def main():
         f"For the seed-0 check at 2/255, the corresponding maximum is "
         f"{payload['max_abs_2of255_strong_minus_primary_ptr_points']:.2f} percentage points.", "",
         "Exact seed-level numerators and denominators are in `seed_level.csv`.", "",
+        "The exact conditioning identity and failed-source stratum are in "
+        "`conditioning_decomposition.csv`.", "",
+    ])
+    if lr_matched:
+        lines.extend([
+            "## Matched learning-rate sensitivity", "",
+            "Seed-0 PGD PTR at 8/255 before and after training every architecture with "
+            "initial learning rate 0.01:", "",
+            "| Source | Target | Primary | Matched LR | Difference |",
+            "|---|---|---:|---:|---:|",
+        ])
+        for row in lr_matched:
+            lines.append(
+                f"| {labels[row['source']]} | {labels[row['target']]} | "
+                f"{row['baseline_ptr_percent']:.2f} | "
+                f"{row['matched_lr_ptr_percent']:.2f} | "
+                f"{row['difference_points']:+.2f} |"
+            )
+        lines.append("")
+    lines.extend([
         "## Provenance note", "",
         "The manifests preserve checkpoint hashes, prediction checksums, source-file hashes, and "
         "environment details. They also record a dirty working tree; archive the manifests and "

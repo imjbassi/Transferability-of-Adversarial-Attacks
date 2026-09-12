@@ -9,26 +9,25 @@ The nine checkpoints, three full-test $L_\infty$ budget sweeps, and planned PGD 
 - Transfer is strongly directional and stable in ordering across three training seeds.
 - Transfer changes substantially from $2/255$ to $8/255$.
 - PTR and CTR separate most clearly when VGG16 source ASR is imperfect at $2/255$.
+- The exact conditioning decomposition shows that the PTR--CTR gap is mostly explained by incomplete pairwise source success. The failed-source target-error term is small but nonzero for VGG16-sourced pairs, so CTR is not exactly derivable from conventional source ASR and PTR.
 - Stronger PGD source optimization does not monotonically increase transfer for every direction.
 - The primary 40-step/five-restart PGD result is close to the 100-step/five-restart endpoint, including the seed-0 $2/255$ check.
+- A seed-0 control matching all initial learning rates at 0.01 preserves both large VGG transfer asymmetries. Individual entries remain optimization-sensitive, so this rules out a learning-rate-only explanation without establishing architecture-only causality.
 
 These are descriptive results for the stated architectures, training procedures, and CIFAR-10 threat model. They do not establish architecture-only causality or general behavior across datasets and model families.
 
 ## Work remaining before submission
 
-1. Run `transferlab.study_report --verify-predictions` to regenerate all cross-seed tables from checksum-verified per-example files.
-2. Run the test suite and compile the revised LaTeX. Inspect the PDF for table width, references, page count, and accidental overflow.
-3. Select the workshop and replace the generic article layout with its official template. Check anonymity, page limit, deadline, artifact rules, and required assistance disclosure.
-4. Freeze a clean release commit or tag. The completed manifests record `git_dirty: true`; retain their source-file hashes and archive the exact executed source snapshot.
-5. Archive checkpoints, histories, manifests, per-example CSVs, generated tables, and commands outside Git if size requires it. Publish immutable checksums and a stable artifact link.
-6. Create one primary figure showing the six directional PGD curves over $2/255$, $4/255$, and $8/255$, with seed points or ranges visible. A second compact figure may show PTR versus CTR at $2/255$.
-7. Have the author verify every manuscript number against the generated summary and confirm the contact address, coauthorship, acknowledgments, disclosure text, and repository license. The stated affiliation is Independent Researcher.
+1. Select the workshop and replace the generic article layout with its official template. Check anonymity, page limit, deadline, artifact rules, and required assistance disclosure.
+2. Freeze a clean release commit or tag. The completed manifests record `git_dirty: true`; retain their source-file hashes and archive the exact executed source snapshot.
+3. Archive checkpoints, histories, manifests, per-example CSVs, generated tables, and commands outside Git if size requires it. Publish immutable checksums and a stable artifact link, such as a Zenodo DOI.
+4. Have the author verify every manuscript number against the generated summary and confirm the contact address, coauthorship, acknowledgments, disclosure text, and repository license. The stated affiliation is Independent Researcher.
 
 ## Scientific limits reviewers may raise
 
 - Three training seeds permit descriptive variability estimates but weak population-level inference.
 - Only three conventional CNN families and one dataset are studied.
-- VGG16 uses a validation-selected learning rate after the common recipe failed.
+- VGG16 uses a validation-selected learning rate after the common recipe failed. A single-seed matched-learning-rate control addresses the simplest confound, but does not separate architecture from all optimization effects.
 - Random-noise controls use separate deterministic draws for nominal source rows.
 - The study does not include transformers, robust models, targeted attacks, AutoAttack, or an $L_2$ threat model.
 - The contribution is measurement and reporting practice supported by a compact empirical case study, rather than a new attack or defense.

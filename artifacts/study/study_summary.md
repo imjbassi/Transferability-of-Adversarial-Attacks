@@ -87,6 +87,21 @@ For the seed-0 check at 2/255, the corresponding maximum is 0.27 percentage poin
 
 Exact seed-level numerators and denominators are in `seed_level.csv`.
 
+The exact conditioning identity and failed-source stratum are in `conditioning_decomposition.csv`.
+
+## Matched learning-rate sensitivity
+
+Seed-0 PGD PTR at 8/255 before and after training every architecture with initial learning rate 0.01:
+
+| Source | Target | Primary | Matched LR | Difference |
+|---|---|---:|---:|---:|
+| ResNet-18 | VGG16 | 19.38 | 32.71 | +13.33 |
+| ResNet-18 | MobileNetV2 | 71.76 | 61.66 | -10.10 |
+| VGG16 | ResNet-18 | 92.99 | 95.98 | +2.99 |
+| VGG16 | MobileNetV2 | 94.80 | 93.12 | -1.68 |
+| MobileNetV2 | ResNet-18 | 63.46 | 37.53 | -25.93 |
+| MobileNetV2 | VGG16 | 25.73 | 18.55 | -7.18 |
+
 ## Provenance note
 
 The manifests preserve checkpoint hashes, prediction checksums, source-file hashes, and environment details. They also record a dirty working tree; archive the manifests and source snapshot with the submission.

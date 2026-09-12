@@ -30,7 +30,7 @@ Generate the cross-seed publication tables from the repository root:
 .\.venv\Scripts\python.exe -m transferlab.study_report --runs runs --output artifacts\study --verify-predictions
 ```
 
-The verification option recomputes every included run from its checksum-verified prediction CSV, so it will take longer than reading the saved summaries. It does not train models or generate attacks. Outputs are `study_summary.md`, `study_summary.json`, `seed_level.csv`, and `sensitivity.csv`.
+The verification option recomputes every included run from its checksum-verified prediction CSV, so it will take longer than reading the saved summaries. It does not train models or generate attacks. Outputs are `study_summary.md`, `study_summary.json`, `seed_level.csv`, `conditioning_decomposition.csv`, and `sensitivity.csv`. The conditioning file reports pairwise source success and target error among eligible source failures, making the identity $\mathrm{PTR}=a\,\mathrm{CTR}+(1-a)b$ directly auditable. Pass `--lr-matched-run <run-directory>` to add `lr_matched_sensitivity.csv` from a completed seed-0 matched-learning-rate evaluation.
 
 Create the publication figure from those verified tables:
 

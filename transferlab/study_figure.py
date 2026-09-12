@@ -76,9 +76,16 @@ def main():
     left.grid(alpha=0.25, linewidth=0.6)
     left.legend(fontsize=6.4, frameon=False, ncol=1, loc="upper left")
 
-    low_rows = [r for r in pgd if int(r["budget_over_255"]) == 2]
+    with (args.study / "conditioning_decomposition.csv").open(newline="") as handle:
+        decomposition = list(csv.DictReader(handle))
+    decomposition_required = {
+        "seed", "source", "target", "pair_source_asr_percent", "ptr_percent",
+        "ctr_percent", "failed_source_target_error_percent",
+    }
+    if not decomposition or not decomposition_required.issubset(decomposition[0]):
+        parser.error("conditioning_decomposition.csv is empty or incompatible")
     pair_rows = defaultdict(list)
-    for row in low_rows:
+    for row in decomposition:
         pair_rows[row["source"], row["target"]].append(row)
     pair_order = (
         ("resnet18", "vgg16"), ("resnet18", "mobilenet_v2"),
@@ -86,19 +93,28 @@ def main():
         ("mobilenet_v2", "resnet18"), ("mobilenet_v2", "vgg16"),
     )
     positions = range(len(pair_order))
-    names, ptr, ctr = [], [], []
+    names, derived, observed, failed_target = [], [], [], []
     for pair in pair_order:
         values = pair_rows[pair]
         names.append(f"{SHORT_LABELS[pair[0]]}$\\to${SHORT_LABELS[pair[1]]}")
-        ptr.append(statistics.mean(float(r["ptr_percent"]) for r in values))
-        ctr.append(statistics.mean(float(r["ctr_percent"]) for r in values))
+        derived.append(statistics.mean(
+            float(r["ptr_percent"]) / (float(r["pair_source_asr_percent"]) / 100)
+            for r in values))
+        observed.append(statistics.mean(float(r["ctr_percent"]) for r in values))
+        failed_target.append(statistics.mean(
+            float(r["failed_source_target_error_percent"]) for r in values))
     width = 0.38
-    right.bar([p - width / 2 for p in positions], ptr, width, label="PTR", color="#56B4E9")
-    right.bar([p + width / 2 for p in positions], ctr, width, label="CTR", color="#E69F00")
-    right.set_title(r"Conditioning at $2/255$ PGD")
-    right.set_ylabel("Transfer rate (%)")
+    right.bar([p - width / 2 for p in positions], derived, width,
+              label=r"PTR/$a_{st}$ ($b_{st}=0$)", color="#56B4E9")
+    right.bar([p + width / 2 for p in positions], observed, width,
+              label="Observed CTR", color="#E69F00")
+    for position, height, residual in zip(positions, observed, failed_target):
+        right.text(position, max(height, derived[position]) + 0.45, f"$b$={residual:.2f}",
+                   ha="center", va="bottom", fontsize=6.5)
+    right.set_title(r"Conditioning identity at $2/255$")
+    right.set_ylabel("Conditional transfer rate (%)")
     right.set_xticks(list(positions), names, fontsize=8)
-    right.set_ylim(0, max(ctr) * 1.22)
+    right.set_ylim(0, max(derived) * 1.22)
     right.grid(axis="y", alpha=0.25, linewidth=0.6)
     right.legend(frameon=False)
 

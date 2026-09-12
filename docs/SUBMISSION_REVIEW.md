@@ -22,7 +22,7 @@ These are descriptive results for the stated architectures, training procedures,
 4. Freeze a clean release commit or tag. The completed manifests record `git_dirty: true`; retain their source-file hashes and archive the exact executed source snapshot.
 5. Archive checkpoints, histories, manifests, per-example CSVs, generated tables, and commands outside Git if size requires it. Publish immutable checksums and a stable artifact link.
 6. Create one primary figure showing the six directional PGD curves over $2/255$, $4/255$, and $8/255$, with seed points or ranges visible. A second compact figure may show PTR versus CTR at $2/255$.
-7. Have the author verify every manuscript number against the generated summary and confirm affiliation, contact address, coauthorship, acknowledgments, disclosure text, and repository license.
+7. Have the author verify every manuscript number against the generated summary and confirm the contact address, coauthorship, acknowledgments, disclosure text, and repository license. The stated affiliation is Independent Researcher.
 
 ## Scientific limits reviewers may raise
 

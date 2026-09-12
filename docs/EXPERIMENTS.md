@@ -47,7 +47,7 @@ Show each training seed separately and summarize across seed-level estimates. Do
 ## Submission gates still open
 
 - Named venue, official template, related-work update targeted to that venue, page limit, and anonymization.
-- Author confirmation of current affiliation, contact information, and desired license.
+- Author confirmation of contact information and desired license. The current affiliation is Independent Researcher.
 - Any venue-required statement on writing or coding assistance. This revision was prepared with AI assistance; the author must verify its scientific content.
 - A clean release commit or tag plus an archival location for checkpoints, per-example logs, manifests, and generated tables. The completed manifests record source hashes but also `git_dirty: true`.
 - A final author check of the compiled manuscript against the generated study summary.

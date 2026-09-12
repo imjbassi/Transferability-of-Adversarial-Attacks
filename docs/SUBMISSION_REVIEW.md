@@ -1,27 +1,36 @@
 # Submission readiness review
 
-The corrected manuscript is suitable for author critique as a methodological draft. It is not yet a submission-ready empirical paper. Pilot execution does not close the experimental gates below. No pilot measurements have been inserted into the manuscript.
+The nine checkpoints, three full-test $L_\infty$ budget sweeps, and planned PGD convergence checks are complete. The empirical record supports a focused workshop paper about directionality, budget dependence, and source-success conditioning. Pilot measurements remain excluded from the manuscript.
 
-## What is defensible now
+## Defensible findings
 
-- The audit identifies concrete defects in the released original code without speculating about unavailable experiments.
-- The label space, differentiable preprocessing, pixel budgets, clean eligibility sets, source-only attack selection, and undefined denominators are explicit.
-- The algebra explains why unconditional error is not transfer success. The manuscript distinguishes diagonal controls from off-diagonal transfer and distinguishes fixed-checkpoint intervals from training variability.
+- All models use CIFAR-10 labels, ten-class heads, differentiable in-model normalization, and raw-pixel perturbation budgets.
+- Existing clean errors are excluded from PTR and CTR. Every per-run table prints exact numerators and denominators.
+- Transfer is strongly directional and stable in ordering across three training seeds.
+- Transfer changes substantially from $2/255$ to $8/255$.
+- PTR and CTR separate most clearly when VGG16 source ASR is imperfect at $2/255$.
+- Stronger PGD source optimization does not monotonically increase transfer for every direction.
+- The primary 40-step/five-restart PGD result is close to the 100-step/five-restart endpoint, including the seed-0 $2/255$ check.
 
-## Highest-priority critique
+These are descriptive results for the stated architectures, training procedures, and CIFAR-10 threat model. They do not establish architecture-only causality or general behavior across datasets and model families.
 
-1. **Contribution:** correcting this repository and applying established attacks to three CNNs is a narrow contribution. Decide whether to pursue a correction/reproducibility paper or formulate a specific empirical question before launching the expensive study. A broad claim about architecture diversity is not established by three architectures with different capacities and optimization behavior.
-2. **Evidence:** execute the frozen full-data training recipe for all nine checkpoints, inspect validation learning curves, and document any validation-only tuning. Then run matched full-test evaluations and the predeclared sensitivities in EXPERIMENTS.md. Do not choose models or attack settings because they produce appealing test transfer rates.
-3. **Attack adequacy:** five-step pilot PGD and five-step CW only exercise execution. Use the planned primary settings, zero-budget controls, and step/restart/radius sensitivity. Low white-box ASR may indicate a weak attack; high conditional transfer with a tiny denominator may be uninformative. Include denominators and checkpoint-specific clean performance throughout.
-4. **Inference:** present seeds individually and quantify variation across training runs. The current report does not implement paired resampling, cross-seed aggregation, or the all-model jointly correct sensitivity subset. Implement those analyses before claiming statistical differences. Do not pool repeated images as independent observations.
-5. **Positioning:** the six current references support foundational definitions, but do not constitute a contemporary transfer-evaluation literature review. Update related work after selecting the actual question and workshop; distinguish this contribution from existing evaluation guidance and transfer benchmarks.
-6. **Artifact:** retain full manifests, prediction CSVs, checkpoint hashes, training histories, exact software environment, and runnable commands. Large checkpoints/data should be released through an appropriate artifact channel rather than committed into Git. A saved example is an illustration, not evidence of perceptual invisibility.
+## Work remaining before submission
 
-## Author decisions required before submission
+1. Run `transferlab.study_report --verify-predictions` to regenerate all cross-seed tables from checksum-verified per-example files.
+2. Run the test suite and compile the revised LaTeX. Inspect the PDF for table width, references, page count, and accidental overflow.
+3. Select the workshop and replace the generic article layout with its official template. Check anonymity, page limit, deadline, artifact rules, and required assistance disclosure.
+4. Freeze a clean release commit or tag. The completed manifests record `git_dirty: true`; retain their source-file hashes and archive the exact executed source snapshot.
+5. Archive checkpoints, histories, manifests, per-example CSVs, generated tables, and commands outside Git if size requires it. Publish immutable checksums and a stable artifact link.
+6. Create one primary figure showing the six directional PGD curves over $2/255$, $4/255$, and $8/255$, with seed points or ranges visible. A second compact figure may show PTR versus CTR at $2/255$.
+7. Have the author verify every manuscript number against the generated summary and confirm affiliation, contact address, coauthorship, acknowledgments, disclosure text, and repository license.
 
-- Name the workshop and track; check its current scope, deadline, official template, page limits, anonymity, and artifact policy.
-- Confirm affiliation/contact details and authorship. Choose repository licensing terms; no license has been invented on the author's behalf.
-- Adapt the manuscript to the official template, compile and inspect it, and apply the venue's assistance-disclosure requirements.
-- Replace evidence-status prose only when the corresponding final experiment artifacts exist and have been audited.
+## Scientific limits reviewers may raise
 
-The manuscript and its existing PDF were not changed in this pass. The review above concerns the supplied draft; no current venue eligibility or acceptance claim has been verified.
+- Three training seeds permit descriptive variability estimates but weak population-level inference.
+- Only three conventional CNN families and one dataset are studied.
+- VGG16 uses a validation-selected learning rate after the common recipe failed.
+- Random-noise controls use separate deterministic draws for nominal source rows.
+- The study does not include transformers, robust models, targeted attacks, AutoAttack, or an $L_2$ threat model.
+- The contribution is measurement and reporting practice supported by a compact empirical case study, rather than a new attack or defense.
+
+The strongest submission presents these limits directly and keeps the claim narrow: transfer rankings are conditional on direction, budget, source success, and the evaluated population.

@@ -11,7 +11,7 @@ The earlier code evaluated ImageNet classifiers against CIFAR-10 labels and call
 
 ## What changed
 
-The code trains ten-class CIFAR-10 models, selects checkpoints on a held-out validation split, and places normalization inside each differentiable model. Attacks operate on raw pixels in `[0,1]`. FGSM, PGD, budgeted CW-L2, identity, and random-noise controls share the same evaluation pipeline. Each source attack is reused across every target. Outputs include checkpoint hashes, test indices, actual predictions, norm checks, denominators, and Wilson intervals. No final replacement empirical findings are embedded in this repository; the [small real-data pilot](docs/PILOT.md) is execution validation only.
+The code trains ten-class CIFAR-10 models, selects checkpoints on a held-out validation split, and places normalization inside each differentiable model. Attacks operate on raw pixels in `[0,1]`. FGSM, PGD, identity, and random-noise controls share the same evaluation pipeline. Each source attack is reused across every target. Outputs include checkpoint hashes, test indices, actual predictions, norm checks, denominators, and Wilson intervals. The revised manuscript reports the completed three-seed, full-test $L_\infty$ study; the [small real-data pilot](docs/PILOT.md) remains execution validation only.
 
 ## Install
 
@@ -31,7 +31,7 @@ python -m pip install torch==2.6.0 torchvision==0.21.0 --index-url https://downl
 python -m pip install -e '.[test]'
 ```
 
-For a CUDA machine, install a compatible build of the same PyTorch/torchvision versions. Full multi-seed training and iterative attacks are substantial compute workloads. This repository does not claim they have been executed as part of the revision.
+For a CUDA machine, install a compatible build of the same PyTorch/torchvision versions. Full multi-seed training and iterative attacks are substantial compute workloads. The completed study used PyTorch 2.6.0+cu124 on an NVIDIA RTX 4070.
 
 ## Train
 
@@ -67,14 +67,23 @@ python -m transferlab.report runs/linf-seed0
 python -m transferlab.figure runs/linf-seed0/example.pt --output runs/linf-seed0/example.png
 ```
 
-CW uses a **separate L2 budget** and must be reported separately:
+For a pilot, use `--samples 1000` and a different output directory. Pilot results are not full-test results. For a zero-budget control, use `--epsilon 0 --attacks clean fgsm pgd`. The paper's completed empirical scope is $L_\infty$; an $L_2$ attack requires a separate protocol and must not be mixed into these tables.
 
-```bash
-python -m transferlab.evaluate --checkpoints checkpoints/resnet18-0/best.pt checkpoints/vgg16-0/best.pt checkpoints/mobilenet_v2-0/best.pt --attacks cw --samples 10000 --seed 0 --l2-budget 1.0 --cw-steps 1000 --cw-search 9 --output runs/cw-seed0
-python -m transferlab.report runs/cw-seed0
+## Aggregate the completed study
+
+After placing the completed run directories under `runs`, verify every prediction checksum and generate the cross-seed publication tables:
+
+```powershell
+.\.venv\Scripts\python.exe -m transferlab.study_report --runs runs --output artifacts\study --verify-predictions
 ```
 
-For a pilot, use `--samples 1000` and a different output directory. Pilot results are not full-test results. For a zero-budget control, use `--epsilon 0 --attacks clean fgsm pgd`. A CW radius is not numerically comparable to an L-infinity radius.
+This reads existing results only. It writes a Markdown summary, a JSON summary, exact seed-level counts, and convergence comparisons under `artifacts\study`.
+
+Create the two-panel publication figure:
+
+```powershell
+.\.venv\Scripts\python.exe -m transferlab.study_figure artifacts\study --output artifacts\study\transfer_summary.pdf
+```
 
 ## Metrics
 

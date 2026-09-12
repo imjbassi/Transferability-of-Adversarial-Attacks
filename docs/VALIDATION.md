@@ -1,5 +1,11 @@
 # Validation record
 
+## Post-experiment manuscript and aggregation update (2026-09-11)
+
+The full three-seed $L_\infty$ experiment record was used to revise `paper/main.tex` and add `transferlab.study_report` and `transferlab.study_figure`. The final seed-0 $2/255$ convergence run completed in 5,894.1 seconds; relative to 40-step/five-restart PGD, 100 steps/five restarts changed every off-diagonal PTR by at most 0.27 percentage points and every CTR by at most 0.40 points.
+
+The checksum-verifying aggregation completed successfully and recomputed all included summaries from the saved prediction CSVs. The publication figure was generated as PDF and 300-dpi PNG and visually inspected. The test suite passed with **36 tests** in 13.33 seconds; the one warning is the documented upstream Foolbox import of SciPy's deprecated `ndimage.filters` namespace. MiKTeX 24.1 compiled the revised six-page manuscript twice. The final log has no overfull boxes, undefined citations, or unresolved references. All six rendered pages were visually inspected for clipping, overlap, table readability, and figure legibility.
+
 ## Follow-up review and real-data pilot (2026-09-09)
 
 Starting commit: `1ab8e349876a8f8630a9665bf73c03554421d3db`.

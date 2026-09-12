@@ -1,14 +1,14 @@
 \documentclass[10pt,twocolumn]{article}
 \usepackage[margin=0.75in]{geometry}
-\usepackage{amsmath,amssymb,booktabs,url}
+\usepackage{amsmath,amssymb,booktabs,graphicx,url}
 \usepackage[hidelinks]{hyperref}
-\title{Evaluating Adversarial Transfer on CIFAR-10:\\A Corrected Measurement Protocol and Reproducibility Audit}
+\title{Conditioning and Directionality in Adversarial Transfer on CIFAR-10}
 \author{Jaiveer Bassi\\Grand Canyon University\\\texttt{jaiveerbassi@yahoo.com}}
-\date{Revised research draft, September 2026}
+\date{September 2026}
 \begin{document}
 \maketitle
 \begin{abstract}
-An adversarial transfer experiment must distinguish errors caused by a perturbation from errors already present on clean inputs. We audit an earlier CIFAR-10 transfer study involving ResNet-18, VGG16, and MobileNetV2, and identify a mismatch between its stated methodology and released implementation: the scripts evaluate ImageNet classifiers directly against CIFAR-10 class indices and report unconditional adversarial error as transfer success. Consequently, the previously reported near-complete transfer rates cannot support conclusions about cross-architecture vulnerability. We provide a corrected experimental protocol and implementation with dataset-compatible checkpoints, differentiable preprocessing, matched source-target samples, explicit norm budgets, conditional metrics, and auditable per-example outputs. An algebraic decomposition demonstrates why unconditional error can be large even when an attack causes no new errors. This revision is a methodological correction and experimental specification; it does not report newly measured CIFAR-10 transfer rates or claim an attack-ranking result. A complete empirical submission requires executing the specified training and evaluation suite and assessing variability across independently trained checkpoints.
+How sensitive are conclusions about adversarial transfer to direction, perturbation budget, and source-success conditioning? We evaluate FGSM and projected-gradient attacks on the full CIFAR-10 test set using three independently trained ResNet-18, VGG16, and MobileNetV2 checkpoints. The corrected evaluation excludes existing clean errors and reports both pairwise transfer (PTR) and transfer conditional on source success (CTR), with exact denominators. At $8/255$, mean PGD transfer ranges from 18.09\% for ResNet-to-VGG to 95.23\% for VGG-to-MobileNet, revealing strong and seed-stable directionality. Reducing the budget to $2/255$ lowers those rates to 5.84\% and 23.29\%, respectively. Conditioning has its largest effect when the source attack is imperfect: for VGG-sourced PGD at $2/255$, CTR exceeds PTR by 5.97--8.68 percentage points across the two targets. A seed-0 100-step sensitivity check changes every off-diagonal $2/255$ PTR by at most 0.27 points relative to the 40-step, five-restart protocol. These results show that transfer claims can change materially with direction, budget, and evaluation population even when labels, preprocessing, and threat models are held fixed.
 \end{abstract}
 
 \section{Introduction}
@@ -16,14 +16,18 @@ Adversarial examples expose a gap between ordinary predictive accuracy and behav
 
 Transferability is an empirical property of a source, a target, an attack, and an evaluation population. It cannot be inferred from a high error rate alone. If the target already misclassifies most clean inputs, an unchanged input may appear to be a successful attack under an unconditional metric. A mismatch between label spaces makes this problem more severe.
 
-This revision replaces the earlier manuscript's numerical conclusions with a reproducibility audit and an executable protocol. Its contributions are: (1) identification of implementation defects that invalidate the original interpretation; (2) precise definitions separating clean accuracy, attack success, and transfer; and (3) a checkpoint-based implementation that records the information needed to independently recompute these quantities. These are methodological contributions, not evidence of a new attack or a new empirical transfer phenomenon.
+The study asks whether conclusions about attack rankings and model-pair differences are stable under different, explicitly stated conditioning populations. The intended empirical contribution is a reproducible characterization of this measurement sensitivity across training seeds and attack settings. The self-correction in Section 3 motivates this question; it is not presented as evidence of a general failure rate across the literature. The implementation and metric definitions support the study, but neither their existence nor a large observed rate difference alone establishes a novel empirical finding.
 
 \section{Background and scope}
 Goodfellow et al. connect adversarial vulnerability to high-dimensional linear behavior and introduce FGSM \cite{goodfellow}. Madry et al. formulate robustness using optimization over a perturbation set \cite{madry}. Carlini and Wagner develop optimization-based attacks and demonstrate the importance of careful evaluation \cite{carlini}. Liu et al. investigate transfer and black-box attacks \cite{liu}. These studies motivate examining source attack strength separately from target transfer. None establishes that one attack must universally transfer better than another.
 
+Carlini et al. systematize the methodological foundations and common pitfalls of adversarial-robustness evaluation \cite{carlini2019}. Croce and Hein introduce AutoAttack, an ensemble intended to reduce dependence on attack tuning and improve evaluation reliability \cite{croce2020}. Tramer et al. emphasize defense-specific adaptive evaluation and illustrate how apparently adequate evaluations can miss weaknesses \cite{tramer2020}. RobustBench standardizes robustness benchmarking under specified tasks and threat models and uses AutoAttack as part of its evaluation framework \cite{robustbench}.
+
+Our study complements these evaluation efforts by examining source-to-target transfer and the populations on which transfer rates are conditioned. It does not introduce a stronger attack, certify robustness, or replace adaptive defense evaluation. The FGSM/PGD study does not constitute an AutoAttack evaluation; citing AutoAttack and RobustBench must not be interpreted as having run either benchmark. Attack-strength sensitivity and the source white-box controls are necessary for interpreting the transfer measurements.
+
 The present protocol concerns untargeted digital attacks against deterministic image classifiers. It does not evaluate physical attacks, detection systems, adversarially trained defenses, or deployment security. CIFAR-10 results would not by themselves justify claims about autonomous vehicles or face recognition. The selected architectures are established CNN baselines, not a comprehensive representation of contemporary vision systems.
 
-\section{Audit of the earlier implementation}
+\section{Motivating case study: a self-correction}
 The audit refers to repository commit \texttt{58f8102} and its four experiment scripts. The accompanying manuscript states that models were trained on CIFAR-10 and reached approximately 90\% clean accuracy. The released scripts instead instantiate ImageNet-pretrained torchvision models, without CIFAR-10 training or replacement of their 1,000-class output heads. They compare the resulting output indices directly with CIFAR-10 labels numbered 0 through 9. The two sets of indices do not share the required class semantics.
 
 \subsection{Preprocessing and budgets}
@@ -40,6 +44,8 @@ Let $f_t$ be the target predictor, $y$ the true label, and $A_s(x)$ an attack co
 \Pr[f_t(A_s(x))\ne y]=(1-e_t)q+e_t r.
 \end{equation}
 For the identity attack, $q=0$ and $r=1$, so adversarial error equals clean error. An illustrative classifier with 99\% clean error therefore has 99\% adversarial error under an identity attack and zero newly induced errors. This is an algebraic example, not a measurement from CIFAR-10.
+
+The unconditional attacked-error rate and CTR generally refer to different populations. Their difference is therefore not an isolated estimate of inflation caused by clean errors, and it need not be positive. The term $e_t r$ directly measures the fraction of all inputs that were already wrong and remain wrong after attack; $(1-e_t)q$ measures newly induced errors on the same all-input denominator. The signed difference between unconditional attacked error and $q$ equals $e_t(r-q)$. These identities explain the error attribution that motivates clean-error exclusion; PTR and CTR additionally impose source-correctness and source-success conditions. Undefined conditional rates remain undefined when their conditioning population is empty.
 
 \subsection{Recorded estimands}
 For a fixed evaluation set of $N$ examples, let $C_s(i)$ and $C_t(i)$ indicate clean correctness. Let $S_s(i)$ and $S_t(i)$ indicate misclassification of the source-generated attacked input. Define the pairwise eligible set $E_{st}=\{i:C_s(i)\land C_t(i)\}$ and successful-source subset $F_{st}=\{i\in E_{st}:S_s(i)\}$. We report
@@ -60,36 +66,119 @@ All networks have ten output classes and are initialized without ImageNet weight
 
 Inputs to the attack interface are floating-point pixels in $[0,1]$. Channel normalization with mean $(0.4914,0.4822,0.4465)$ and standard deviation $(0.2470,0.2435,0.2616)$ occurs inside the model, so gradients include preprocessing while perturbation budgets remain in raw-pixel coordinates. Checkpoints contain architecture, class order, split indices, training seed, selected epoch, and model state. Evaluation rejects incompatible checkpoint metadata.
 
-The specified initial training recipe uses 200 epochs, SGD with momentum 0.9, initial learning rate 0.1, weight decay $5\times10^{-4}$, cosine learning-rate decay, and batch size 128. This is a reproducible starting recipe, not a guarantee of any particular accuracy. The planned primary runs use independent training seeds 0, 1, and 2. Architecture-specific tuning, if needed, must use validation data and be documented before test evaluation.
+Training uses 200 epochs, SGD with momentum 0.9, weight decay $5\times10^{-4}$, cosine learning-rate decay, and batch size 128. ResNet-18 and MobileNetV2 use initial learning rate 0.1. That rate caused the VGG16 loss to remain near $\log 10$ and validation accuracy near chance, so we stopped that failed run and selected 0.01 using validation performance only. We then froze 0.01 for all three VGG16 seeds before test evaluation. The independently trained seeds are 0, 1, and 2; the split seed remains 1729.
 
 \subsection{Attacks and controls}
 FGSM uses one signed cross-entropy gradient step with projection into the pixel range. PGD uses random initialization within the intersection of the pixel range and the $L_\infty$ ball, 40 steps, absolute step size $2/255$, and five restarts at the primary budget $8/255$. Across iterates and restarts, the implementation prioritizes source misclassification, then larger source loss. Target predictions never influence this selection. This source-selected construction may differ from final-iterate PGD in its transfer behavior, so the selection rule is part of the attack specification.
 
-The clean control leaves inputs unchanged. The random-noise control samples independent uniform perturbations within the same $L_\infty$ budget and clips to the pixel range. A separate CW-$L_2$ evaluation uses Foolbox \cite{foolbox} with 1,000 iterations, nine binary-search steps, learning rate 0.01, zero confidence, disabled early stopping, and a declared $L_2$ radius of 1.0. The returned budget-clipped candidate is evaluated on all models. This is budgeted CW evaluation, not an assertion that a minimum-norm solution was found. CW outcomes are presented separately from $L_\infty$ outcomes; equal numeric radii across norms are not equal threat models.
+The clean control leaves inputs unchanged. The random-noise control samples independent uniform perturbations within the same $L_\infty$ budget and clips to the pixel range. The empirical scope is limited to the $L_\infty$ threat model. We do not mix CW-$L_2$ results with these measurements or imply that equal numeric radii across norms represent equal threat models.
 
 For every source and attack, the same generated inputs are evaluated on every target, including the source. Models remain in evaluation mode. Runtime checks reject nonfinite pixels, invalid pixel ranges, and norm violations. A saved example records its test index, true label, predictions, and actual perturbation. Visualization does not presume attack success or establish perceptual invisibility.
 
-\subsection{Reproducibility and planned sensitivity analysis}
+\subsection{Reproducibility and sensitivity analysis}
 A seeded permutation specifies test indices, and the identical ordered sample list is used for every pair. The final study should use the full test set. A 1,000-example subset is suitable for a clearly labeled pilot only. Each completed run saves arguments, software versions, commit identifier, checkpoint SHA-256 hashes, test indices, elapsed time, clean and attacked per-example predictions, and per-example $L_2$ and $L_\infty$ norms. Tables are generated from measured summaries rather than embedded constants.
 
-The planned sensitivity analysis includes $L_\infty$ radii $0,2/255,4/255,8/255$, PGD step counts 10, 40, and 100, and restart counts 1 and 5. Step sizes must be recorded for every budget. CW requires an independent iteration and radius sensitivity study. Attack hyperparameters must not be selected to maximize target transfer using the final test set. Training-seed results should be shown individually and summarized across runs; pooling them as independent images understates uncertainty because the same test examples recur. Paired comparisons should use the same image indices and common eligibility sets, with paired resampling if inferential comparisons are made.
+We evaluate $L_\infty$ radii $2/255$, $4/255$, and $8/255$. The PGD step size is one quarter of the radius. At $8/255$, seed 0 uses 10, 40, and 100 steps with one restart and 100 steps with five restarts; seeds 1 and 2 repeat the 10-step, one-restart and 100-step, five-restart endpoints. At $2/255$, seed 0 also uses 100 steps and five restarts. Attack hyperparameters are not selected to maximize target transfer. We show training seeds individually and summarize seed-level estimates; we do not pool repeated test images as independent observations.
 
-\section{Evidence status and submission requirements}
-This manuscript contains an implementation audit, metric definitions, and an executable experiment specification. It contains no replacement CIFAR-10 accuracy, transfer matrix, attack ranking, or defense-effectiveness result. Unit tests and synthetic checks, when passing, establish properties of the implementation rather than scientific performance on the target dataset.
+\section{Results}
+\subsection{Clean accuracy and primary attack strength}
+Table~\ref{tab:clean} reports validation-selected checkpoint performance on the untouched test set. Variation across the three training seeds is small relative to the differences among architectures. At the primary $8/255$ budget, 40-step, five-restart PGD attains 100\% source ASR for every ResNet-18 and MobileNetV2 checkpoint and at least 99.98\% for every VGG16 checkpoint. The diagonal therefore confirms that the primary attack is strong against its source models.
 
-Before an empirical workshop submission, the artifact must include trained checkpoints, complete manifests, clean accuracies, source ASRs, full transfer matrices with denominators, perturbation diagnostics, seed variability, and attack-strength sensitivity results. Any weakly trained model must be identified rather than silently excluded. Differences in architecture, capacity, optimization, and clean accuracy confound architecture-only causal interpretations. An all-model jointly correct subset can supplement pairwise metrics but introduces another selection condition that must be reported.
+Uniform random noise at the same $8/255$ radius produces mean off-diagonal PTR between 1.45\% and 7.89\%, below the corresponding adversarial results. Noise CTR is based on much smaller source-success subsets and is not used to rank model pairs. Because each nominal source row uses a separately seeded noise realization, these controls establish a non-adversarial baseline within each row rather than a paired comparison among noise rows.
 
-The current contribution is limited to a correction of this repository and a protocol using established methods. A broader reproducibility claim would require auditing additional artifacts; a new empirical claim requires running the protocol. Venue-specific formatting, anonymization, related-work coverage, and artifact requirements remain to be selected for a named workshop.
+\begin{table}[t]
+\centering
+\caption{Clean test accuracy (\%) by training seed. The final column is the mean and sample standard deviation over three checkpoints.}
+\label{tab:clean}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lrrrr}
+\toprule
+Model & Seed 0 & Seed 1 & Seed 2 & Mean $\pm$ SD\\
+\midrule
+ResNet-18 & 95.11 & 95.01 & 95.20 & 95.11 $\pm$ 0.10\\
+VGG16 & 90.59 & 90.41 & 90.88 & 90.63 $\pm$ 0.24\\
+MobileNetV2 & 89.97 & 90.57 & 90.38 & 90.31 $\pm$ 0.31\\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection{Directionality at the primary budget}
+Table~\ref{tab:primary} shows off-diagonal PGD PTR at $8/255$. Transfer is strongly directional. VGG16 examples transfer to ResNet-18 at 92.73\% on average, whereas the reverse direction reaches 18.09\%. MobileNetV2-to-VGG16 is 25.94\%, whereas VGG16-to-MobileNetV2 is 95.23\%. The ordering persists across all three seeds, so it is not produced by one checkpoint draw. These are associations among the trained architectures and recipes; differences in capacity, optimization, and clean accuracy preclude an architecture-only causal interpretation.
+
+\begin{table}[t]
+\centering
+\caption{PGD PTR (\%) at $8/255$, reported as the mean [minimum, maximum] over three training seeds. Rows are sources and columns are targets. Diagonal entries are white-box controls and are omitted.}
+\label{tab:primary}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lrrr}
+\toprule
+Source & ResNet-18 & VGG16 & MobileNetV2\\
+\midrule
+ResNet-18 & --- & 18.09 [16.73,19.38] & 72.27 [71.76,72.73]\\
+VGG16 & 92.73 [92.40,92.99] & --- & 95.23 [94.80,95.61]\\
+MobileNetV2 & 67.60 [63.46,70.61] & 25.94 [25.73,26.29] & ---\\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection{Budget and conditioning sensitivity}
+Transfer falls sharply with the perturbation budget, but the directional ordering is broadly stable (Table~\ref{tab:budget}). VGG16-to-ResNet-18 drops from 92.73\% at $8/255$ to 15.45\% at $2/255$; ResNet-18-to-MobileNetV2 drops from 72.27\% to 21.61\%. These changes rule out treating one reported transfer percentage as a property of a model pair independent of its threat model.
+
+\begin{table}[t]
+\centering
+\caption{Mean PGD PTR (\%) over three seeds as a function of $L_\infty$ budget.}
+\label{tab:budget}
+\begin{tabular}{lrrr}
+\toprule
+Direction & $2/255$ & $4/255$ & $8/255$\\
+\midrule
+ResNet-18 $\rightarrow$ VGG16 & 5.84 & 9.65 & 18.09\\
+ResNet-18 $\rightarrow$ MobileNetV2 & 21.61 & 42.40 & 72.27\\
+VGG16 $\rightarrow$ ResNet-18 & 15.45 & 54.52 & 92.73\\
+VGG16 $\rightarrow$ MobileNetV2 & 23.29 & 64.50 & 95.23\\
+MobileNetV2 $\rightarrow$ ResNet-18 & 10.79 & 31.80 & 67.60\\
+MobileNetV2 $\rightarrow$ VGG16 & 4.61 & 10.69 & 25.94\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $2/255$, VGG16 source ASR is only 71.05--72.98\%. Conditioning on successful source attacks raises mean transfer from 15.45\% PTR to 21.42\% CTR toward ResNet-18, and from 23.29\% to 31.97\% toward MobileNetV2. The corresponding gaps are only 0.37 points or less for ResNet-18 and MobileNetV2 sources, whose source ASRs are at least 94.15\% and 99.82\%. At $8/255$, near-perfect source ASR makes PTR and CTR nearly identical. Conditioning therefore changes the interpretation most when source optimization fails on a substantial part of the jointly clean-correct population.
+
+The stronger 100-step, five-restart $8/255$ endpoint changes off-diagonal PTR by at most 1.70 percentage points relative to the primary 40-step, five-restart setting across all seeds. Increasing optimization does not increase every transfer entry: for example, ResNet-18-to-VGG16 falls slightly. At $2/255$ on seed 0, increasing from 40 to 100 steps at five restarts changes all off-diagonal PTR entries by at most 0.27 points and CTR entries by at most 0.40 points. This supports convergence of the primary step count without asserting a global optimum.
+
+FGSM reinforces the distinction between source strength and transfer. At $8/255$, its mean PTR is 27.80\% for ResNet-18-to-VGG16 and 29.34\% for MobileNetV2-to-VGG16, compared with 18.09\% and 25.94\% for PGD. PGD nevertheless has far higher source ASR. For the other four off-diagonal directions, PGD transfers more strongly than FGSM. An attack ranking therefore depends on the source--target direction and cannot be inferred from white-box source success alone.
+
+\IfFileExists{../artifacts/study/transfer_summary.pdf}{
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{../artifacts/study/transfer_summary.pdf}
+\caption{Left: mean PGD PTR over three seeds at each budget, with minimum-to-maximum seed bars. Line color denotes the source and marker/line style denotes the target. Right: mean PTR and CTR for PGD at $2/255$; R, V, and M denote ResNet-18, VGG16, and MobileNetV2.}
+\label{fig:summary}
+\end{figure*}
+}{}
+
+\section{Evidence status and limitations}
+The final record contains nine checkpoints, full-test predictions, exact eligibility counts, perturbation norms, manifests, and checkpoint and source hashes. The three seed triads provide evidence about variability under the specified training procedure, but three draws support descriptive ranges rather than precise population-level inference. Wilson intervals in the generated per-run tables describe fixed-checkpoint binomial variation and do not capture training variability. The same 10,000 test images recur across seeds, so image-level counts must not be pooled as 30,000 independent observations.
+
+The study covers three standard CNN families on CIFAR-10 and untargeted $L_\infty$ attacks. It does not establish behavior on larger datasets, transformers, adversarially trained models, targeted attacks, or physical settings. It also does not compare against every modern transfer attack. The VGG16 learning-rate adjustment was selected using validation results after the common recipe failed; this documented architecture-specific choice may itself affect comparisons. Random-noise draws are independently generated for each nominal source row, so noise-control rows are reproducible but do not share one common perturbation realization. Finally, the run manifests record a dirty working tree. Their source-file hashes identify the executed implementation, but a clean tagged release and archived artifacts would provide a stronger provenance record.
+
+The original artifact is a motivating self-correction, not evidence that similar errors are common elsewhere. The present results do not imply that one architecture is intrinsically more transferable: architecture, parameterization, training dynamics, and clean accuracy vary together. PTR and CTR answer different questions, and neither should be selected after seeing which produces the more dramatic result.
 
 \section{Conclusion}
-The original released code does not support the claim of near-complete adversarial transfer among CIFAR-10-trained models. Correct measurement requires compatible label spaces, known clean performance, explicit threat models, and denominators that exclude pre-existing errors. The revised pipeline makes these requirements inspectable and provides a path to a defensible empirical study. Conclusions about attack rankings and architectural diversity are deferred until corrected measurements are available.
+Across three training seeds, adversarial transfer on CIFAR-10 is strongly directional and budget dependent. At $8/255$, mean PGD PTR spans 18.09--95.23\% across off-diagonal pairs; at $2/255$, it spans 4.61--23.29\%. Source-success conditioning changes rates most when the source attack is imperfect, producing PTR-to-CTR increases of up to 8.68 points for VGG16-sourced $2/255$ PGD. Stronger source optimization can also reduce transfer for a particular direction, so source ASR and target transfer must be reported separately. Compatible labels and preprocessing make these measurements meaningful; clean-error exclusions, explicit denominators, seed-level reporting, and convergence checks make their limits visible.
 
-\begin{thebibliography}{6}
+\begin{thebibliography}{10}
 \bibitem{goodfellow} I. J. Goodfellow, J. Shlens, and C. Szegedy. Explaining and Harnessing Adversarial Examples. ICLR, 2015. \url{https://arxiv.org/abs/1412.6572}.
 \bibitem{madry} A. Madry, A. Makelov, L. Schmidt, D. Tsipras, and A. Vladu. Towards Deep Learning Models Resistant to Adversarial Attacks. ICLR, 2018. \url{https://arxiv.org/abs/1706.06083}.
 \bibitem{carlini} N. Carlini and D. Wagner. Towards Evaluating the Robustness of Neural Networks. IEEE Symposium on Security and Privacy, 2017. \url{https://arxiv.org/abs/1608.04644}.
 \bibitem{liu} Y. Liu, X. Chen, C. Liu, and D. Song. Delving into Transferable Adversarial Examples and Black-box Attacks. ICLR, 2017. \url{https://arxiv.org/abs/1611.02770}.
 \bibitem{cifar} A. Krizhevsky. Learning Multiple Layers of Features from Tiny Images. Technical report, University of Toronto, 2009. \url{https://www.cs.toronto.edu/~kriz/cifar.html}.
 \bibitem{foolbox} J. Rauber, R. Zimmermann, M. Bethge, and W. Brendel. Foolbox Native: Fast Adversarial Attacks to Benchmark the Robustness of Machine Learning Models in PyTorch, TensorFlow, and JAX. JOSS, 5(53):2607, 2020. \url{https://doi.org/10.21105/joss.02607}.
+\bibitem{carlini2019} N. Carlini et al. On Evaluating Adversarial Robustness. arXiv:1902.06705, 2019. \url{https://arxiv.org/abs/1902.06705}.
+\bibitem{croce2020} F. Croce and M. Hein. Reliable Evaluation of Adversarial Robustness with an Ensemble of Diverse Parameter-free Attacks. ICML, PMLR 119:2206--2216, 2020. \url{https://proceedings.mlr.press/v119/croce20b.html}.
+\bibitem{tramer2020} F. Tramer, N. Carlini, W. Brendel, and A. Madry. On Adaptive Attacks to Adversarial Example Defenses. NeurIPS, 2020. \url{https://arxiv.org/abs/2002.08347}.
+\bibitem{robustbench} F. Croce et al. RobustBench: A Standardized Adversarial Robustness Benchmark. NeurIPS Datasets and Benchmarks, 2021. \url{https://robustbench.github.io/}.
 \end{thebibliography}
 \end{document}

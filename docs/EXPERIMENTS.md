@@ -30,7 +30,7 @@ Generate the cross-seed publication tables from the repository root:
 .\.venv\Scripts\python.exe -m transferlab.study_report --runs runs --output artifacts\study --verify-predictions
 ```
 
-The verification option recomputes every included run from its checksum-verified prediction CSV, so it will take longer than reading the saved summaries. It does not train models or generate attacks. Outputs are `study_summary.md`, `study_summary.json`, `seed_level.csv`, `conditioning_decomposition.csv`, and `sensitivity.csv`. The conditioning file reports pairwise source success and target error among eligible source failures, making the identity $\mathrm{PTR}=a\,\mathrm{CTR}+(1-a)b$ directly auditable. Pass `--lr-matched-run <run-directory>` to add `lr_matched_sensitivity.csv` from a completed seed-0 matched-learning-rate evaluation.
+The verification option recomputes every included run from its checksum-verified prediction CSV, so it will take longer than reading the saved summaries. It does not train models or generate attacks. Outputs are `study_summary.md`, `study_summary.json`, `seed_level.csv`, `conditioning_decomposition.csv`, `primary_pgd_wilson_envelope.csv`, and `sensitivity.csv`. The conditioning file reports pairwise source success and target error among eligible source failures, making the identity $\mathrm{PTR}=a\,\mathrm{CTR}+(1-a)b$ directly auditable. The Wilson file records the non-pooled envelope shown in the primary paper table. Pass `--lr-matched-run <run-directory>` to add `lr_matched_sensitivity.csv` from a completed seed-0 matched-learning-rate evaluation.
 
 Create the publication figure from those verified tables:
 
@@ -38,7 +38,7 @@ Create the publication figure from those verified tables:
 .\.venv\Scripts\python.exe -m transferlab.study_figure artifacts\study --output artifacts\study\transfer_summary.pdf
 ```
 
-This writes a vector PDF and a 300-dpi PNG. The left panel shows seed ranges for all six directional PGD budget curves; the right panel compares PTR and CTR at $2/255$.
+This writes a vector PDF and a 300-dpi PNG showing seed ranges for all six directional PGD budget curves. The conditioning decomposition and its exact denominators are reported in the main paper table and `conditioning_decomposition.csv`.
 
 ## Statistical interpretation
 

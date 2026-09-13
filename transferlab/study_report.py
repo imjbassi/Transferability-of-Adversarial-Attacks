@@ -12,6 +12,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from .common import digest
+from .metrics import binomial
 from .report import verified_results
 
 
@@ -280,6 +281,30 @@ def main():
         writer.writeheader()
         writer.writerows(conditioning)
 
+    primary_wilson = []
+    for source in ARCHITECTURES:
+        for target in ARCHITECTURES:
+            if source == target:
+                continue
+            selected = [r for r in seed_rows if r["budget_over_255"] == 8
+                        and r["attack"] == "pgd" and r["source"] == source
+                        and r["target"] == target]
+            intervals = [
+                binomial(r["ptr_numerator"], r["ptr_denominator"])["ci95"]
+                for r in selected
+            ]
+            primary_wilson.append({
+                "source": source,
+                "target": target,
+                "mean_ptr_percent": statistics.mean(r["ptr_percent"] for r in selected),
+                "wilson_envelope_low_percent": percent(min(i[0] for i in intervals)),
+                "wilson_envelope_high_percent": percent(max(i[1] for i in intervals)),
+            })
+    with (args.output / "primary_pgd_wilson_envelope.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=primary_wilson[0].keys())
+        writer.writeheader()
+        writer.writerows(primary_wilson)
+
     lr_matched = []
     if args.lr_matched_run:
         matched_manifest, matched_rows = load_run(
@@ -331,6 +356,7 @@ def main():
         "clean_accuracy_percent": {a: mean_range(v) for a, v in clean.items()},
         "attack_aggregates": aggregates,
         "conditioning_decomposition_2of255_pgd": conditioning_aggregates,
+        "primary_pgd_wilson_envelope_8of255": primary_wilson,
         "lr_matched_sensitivity_8of255_seed0": lr_matched or None,
         "max_abs_8of255_strong_minus_primary_ptr_points": max(
             abs(r["difference_points"]) for r in sensitivity if r["budget_over_255"] == 8),
@@ -378,6 +404,8 @@ def main():
         f"For the seed-0 check at 2/255, the corresponding maximum is "
         f"{payload['max_abs_2of255_strong_minus_primary_ptr_points']:.2f} percentage points.", "",
         "Exact seed-level numerators and denominators are in `seed_level.csv`.", "",
+        "The primary PGD table's seed-specific Wilson interval envelope is in "
+        "`primary_pgd_wilson_envelope.csv`.", "",
         "The exact conditioning identity and failed-source stratum are in "
         "`conditioning_decomposition.csv`.", "",
     ])

@@ -1,5 +1,11 @@
 # Validation record
 
+## Submission cleanup (2026-09-13)
+
+The abstract now leads with the target-dependent denominator mismatch: conventional source ASR and PTR cannot reconstruct CTR. The conditioning result is stated narrowly—five directions are nearly mechanical, while VGG16-to-MobileNetV2 has the only material failed-source residual. The introduction lists three contributions, the redundant error-attribution discussion is reduced to two sentences, and the matched-learning-rate paragraph states exactly what the control licenses.
+
+The primary $8/255$ PGD matrix now shows an envelope of the three seed-specific Wilson 95% intervals without pooling repeated test images. The conditioning table prints all pairwise-eligible and source-success counts for seeds 0/1/2. The duplicated conditioning plot was removed from the paper; the generated figure now contains only the budget sweep. The final six-page PDF was compiled twice and all pages were visually inspected. There are no overfull boxes, undefined citations, or unresolved references. The test suite passes with **37 tests**; the sole warning remains the upstream Foolbox/SciPy deprecation.
+
 ## Conditioning and related-work revision (2026-09-12)
 
 The checksum-verified per-example predictions were reanalyzed by splitting each pairwise-eligible set into source-success and source-failure strata. The generated `artifacts/study/conditioning_decomposition.csv` records exact counts for both strata and verifies

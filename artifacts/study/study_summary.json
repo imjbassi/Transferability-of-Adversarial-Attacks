@@ -3149,6 +3149,50 @@
       }
     }
   },
+  "primary_pgd_wilson_envelope_8of255": [
+    {
+      "source": "resnet18",
+      "target": "vgg16",
+      "mean_ptr_percent": 18.089522821275803,
+      "wilson_envelope_low_percent": 15.971918600957583,
+      "wilson_envelope_high_percent": 20.2165129364597
+    },
+    {
+      "source": "resnet18",
+      "target": "mobilenet_v2",
+      "mean_ptr_percent": 72.2677476054645,
+      "wilson_envelope_low_percent": 70.81036475229209,
+      "wilson_envelope_high_percent": 73.64294736999042
+    },
+    {
+      "source": "vgg16",
+      "target": "resnet18",
+      "mean_ptr_percent": 92.73493896041838,
+      "wilson_envelope_low_percent": 91.83344381432288,
+      "wilson_envelope_high_percent": 93.50456140895591
+    },
+    {
+      "source": "vgg16",
+      "target": "mobilenet_v2",
+      "mean_ptr_percent": 95.2309229246591,
+      "wilson_envelope_low_percent": 94.3137576667354,
+      "wilson_envelope_high_percent": 96.02389801056906
+    },
+    {
+      "source": "mobilenet_v2",
+      "target": "resnet18",
+      "mean_ptr_percent": 67.60290187442219,
+      "wilson_envelope_low_percent": 62.448279125588556,
+      "wilson_envelope_high_percent": 71.54626707144428
+    },
+    {
+      "source": "mobilenet_v2",
+      "target": "vgg16",
+      "mean_ptr_percent": 25.941686375278547,
+      "wilson_envelope_low_percent": 24.811513634999354,
+      "wilson_envelope_high_percent": 27.227386125386214
+    }
+  ],
   "lr_matched_sensitivity_8of255_seed0": [
     {
       "source": "resnet18",

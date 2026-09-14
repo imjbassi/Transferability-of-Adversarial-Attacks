@@ -1,6 +1,8 @@
 # Adversarial transfer on CIFAR-10
 
-**Status: corrected research implementation and revised methodological draft. New CIFAR-10 experiments are required before an empirical submission.**
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22737839.svg)](https://doi.org/10.5281/zenodo.22737839)
+
+**Status: completed denominator-corrected CIFAR-10 study with three architectures, three training seeds, full-test evaluation, sensitivity analyses, and an archived reproducibility release.**
 
 The earlier code evaluated ImageNet classifiers against CIFAR-10 labels and called unconditional target error a transfer success rate. Those results do not establish adversarial transfer. The previous claims of approximately 90% clean accuracy and near-100% transfer are not supported by the released artifacts. See [the audit](docs/AUDIT.md).
 
@@ -8,6 +10,7 @@ The earlier code evaluated ImageNet classifiers against CIFAR-10 labels and call
 - [Complete editable LaTeX manuscript](paper/main.tex)
 - [Experiment and submission requirements](docs/EXPERIMENTS.md)
 - [Validation record](docs/VALIDATION.md)
+- [Archived release and reproducibility snapshot](https://doi.org/10.5281/zenodo.22737840)
 
 ## What changed
 
@@ -112,4 +115,8 @@ A standard LaTeX installation with `pdflatex` is required. The manuscript uses a
 
 ## Licensing
 
-The previous README referred to a `LICENSE` file that was not present. No new license has been assigned in this revision; the repository owner must choose the intended terms before describing the project as open-source or granting reuse permissions.
+Software source code is released under the MIT License. The manuscript, documentation, and original research artifacts are released under the Creative Commons Attribution 4.0 International License. CIFAR-10, third-party packages, and other externally supplied material retain their original terms. See [LICENSE](LICENSE).
+
+## Citation
+
+The stable concept DOI, which resolves to the latest archived release, is [10.5281/zenodo.22737839](https://doi.org/10.5281/zenodo.22737839). The exact `v1.0.0` snapshot is [10.5281/zenodo.22737840](https://doi.org/10.5281/zenodo.22737840). Machine-readable citation metadata is available in [CITATION.cff](CITATION.cff).

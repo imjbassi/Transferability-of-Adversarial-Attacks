@@ -1,11 +1,14 @@
-\documentclass[10pt,twocolumn]{article}
-\usepackage[margin=0.75in]{geometry}
-\usepackage{amsmath,amssymb,booktabs,graphicx,url}
+\documentclass[10pt]{article}
+\usepackage{tmlr}
+\usepackage{amsmath,amssymb,booktabs,graphicx}
 \usepackage[hidelinks]{hyperref}
-\hypersetup{pdftitle={Conditioning and Directionality in Adversarial Transfer on CIFAR-10},pdfauthor={Jaiveer Bassi}}
+\usepackage{url}
+\hypersetup{pdftitle={Conditioning and Directionality in Adversarial Transfer on CIFAR-10}}
 \title{Conditioning and Directionality in Adversarial Transfer on CIFAR-10}
-\author{Jaiveer Bassi\\Independent Researcher\\\texttt{jaiveerbassi@yahoo.com}}
-\date{September 2026}
+\author{\name Anonymous Authors}
+\def\month{09}
+\def\year{2026}
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
 \begin{document}
 \maketitle
 \begin{abstract}
@@ -13,7 +16,7 @@ Conventionally reported source attack success rate (ASR) and pairwise transfer r
 \end{abstract}
 
 \section{Introduction}
-Adversarial examples expose a gap between ordinary predictive accuracy and behavior under deliberately chosen perturbations. FGSM provides a gradient-based construction \cite{goodfellow}, while iterative optimization enables broader searches within a threat model \cite{madry,carlini}. Transfer attacks use a source model to construct an input that is subsequently evaluated on another model. The target supplies neither gradients nor feedback during construction.
+Adversarial examples expose a gap between ordinary predictive accuracy and behavior under deliberately chosen perturbations. FGSM provides a gradient-based construction \citep{goodfellow}, while iterative optimization enables broader searches within a threat model \citep{madry,carlini}. Transfer attacks use a source model to construct an input that is subsequently evaluated on another model. The target supplies neither gradients nor feedback during construction.
 
 Transferability is an empirical property of a source, a target, an attack, and an evaluation population. It cannot be inferred from a high error rate alone. If the target already misclassifies most clean inputs, an unchanged input may appear to be a successful attack under an unconditional metric. A mismatch between label spaces makes this problem more severe.
 
@@ -26,18 +29,18 @@ The study asks whether conclusions about attack rankings and model-pair differen
 The self-correction in Section 3 motivates the measurement question and is not evidence of a general failure rate across the literature.
 
 \section{Background and scope}
-Goodfellow et al. connect adversarial vulnerability to high-dimensional linear behavior and introduce FGSM \cite{goodfellow}. Madry et al. formulate robustness using optimization over a perturbation set \cite{madry}. Carlini and Wagner develop optimization-based attacks and demonstrate the importance of careful evaluation \cite{carlini}. Papernot et al. demonstrate practical transfer-based black-box attacks using substitute models \cite{papernot}. Liu et al. study non-targeted and targeted transfer across large models \cite{liu}, while Tramer et al. characterize shared adversarial subspaces and limits of transfer \cite{tramerspace}.
+\citet{goodfellow} connect adversarial vulnerability to high-dimensional linear behavior and introduce FGSM. \citet{madry} formulate robustness using optimization over a perturbation set. \citet{carlini} develop optimization-based attacks and demonstrate the importance of careful evaluation. \citet{papernot} demonstrate practical transfer-based black-box attacks using substitute models. \citet{liu} study non-targeted and targeted transfer across large models, while \citet{tramerspace} characterize shared adversarial subspaces and limits of transfer.
 
-Directionality and the tension between white-box optimization and transfer are established phenomena: Demontis et al. explain asymmetric transfer through target vulnerability and surrogate complexity \cite{demontis}, while Dong et al. use momentum to improve black-box transfer \cite{dong}. We position the present study as a denominator-complete remeasurement of these phenomena rather than a new transfer attack.
+Directionality and the tension between white-box optimization and transfer are established phenomena: \citet{demontis} explain asymmetric transfer through target vulnerability and surrogate complexity, while \citet{dong} use momentum to improve black-box transfer. We position the present study as a denominator-complete remeasurement of these phenomena rather than a new transfer attack.
 
-Carlini et al. systematize the methodological foundations and common pitfalls of adversarial-robustness evaluation \cite{carlini2019}. Croce and Hein introduce AutoAttack, an ensemble intended to reduce dependence on attack tuning and improve evaluation reliability \cite{croce2020}. Tramer et al. emphasize defense-specific adaptive evaluation and illustrate how apparently adequate evaluations can miss weaknesses \cite{tramer2020}. RobustBench standardizes robustness benchmarking under specified tasks and threat models and uses AutoAttack as part of its evaluation framework \cite{robustbench}.
+\citet{carlini2019} systematize the methodological foundations and common pitfalls of adversarial-robustness evaluation. \citet{croce2020} introduce AutoAttack, an ensemble intended to reduce dependence on attack tuning and improve evaluation reliability. \citet{tramer2020} emphasize defense-specific adaptive evaluation and illustrate how apparently adequate evaluations can miss weaknesses. RobustBench standardizes robustness benchmarking under specified tasks and threat models and uses AutoAttack as part of its evaluation framework \citep{robustbench}.
 
 Our study complements these evaluation efforts by examining source-to-target transfer and the populations on which transfer rates are conditioned. It does not introduce a stronger attack, certify robustness, or replace adaptive defense evaluation. The FGSM/PGD study does not constitute an AutoAttack evaluation; citing AutoAttack and RobustBench must not be interpreted as having run either benchmark. Attack-strength sensitivity and the source white-box controls are necessary for interpreting the transfer measurements.
 
 The present protocol concerns untargeted digital attacks against deterministic image classifiers. It does not evaluate physical attacks, detection systems, adversarially trained defenses, or deployment security. CIFAR-10 results would not by themselves justify claims about autonomous vehicles or face recognition. The selected architectures are established CNN baselines, not a comprehensive representation of contemporary vision systems.
 
 \section{Motivating case study: a self-correction}
-Repository commit \texttt{58f8102} compared CIFAR-10 labels directly with the indices of 1,000-class ImageNet models, omitted required preprocessing, mixed perturbation coordinate systems, and counted existing clean errors as attack successes. It also lacked compatible checkpoints and per-example logs. Those rates and rankings are excluded from the revised empirical record. This self-correction motivates compatible labels, raw-pixel budgets, clean eligibility, and recorded source success; it is not the empirical contribution. The line-by-line audit is retained in the supplementary artifact.
+An earlier implementation compared CIFAR-10 labels directly with the indices of 1,000-class ImageNet models, omitted required preprocessing, mixed perturbation coordinate systems, and counted existing clean errors as attack successes. It also lacked compatible checkpoints and per-example logs. Those rates and rankings are excluded from the revised empirical record. This self-correction motivates compatible labels, raw-pixel budgets, clean eligibility, and recorded source success; it is not the empirical contribution. The line-by-line audit is retained in the anonymized supplementary artifact.
 
 \section{Why error is not attack success}
 Let $f_t$ be the target predictor, $y$ the true label, and $A_s(x)$ an attack constructed using source $s$. Define clean error $e_t=\Pr[f_t(x)\ne y]$, newly induced error $q=\Pr[f_t(A_s(x))\ne y\mid f_t(x)=y]$, and persistence of existing error $r=\Pr[f_t(A_s(x))\ne y\mid f_t(x)\ne y]$. By partitioning on clean correctness,
@@ -65,7 +68,7 @@ The artifact tables carry numerator and denominator counts for every reported fr
 
 \section{Experimental protocol}
 \subsection{Data and model training}
-The pipeline uses the standard CIFAR-10 class order \cite{cifar}. A fixed split seed of 1729 partitions the 50,000 training images into 45,000 training and 5,000 validation images. Validation data receive no random augmentation. Training uses random crops with four-pixel padding and random horizontal flips. The 10,000 test images are reserved for final evaluation; checkpoint selection uses validation accuracy only.
+The pipeline uses the standard CIFAR-10 class order \citep{cifar}. A fixed split seed of 1729 partitions the 50,000 training images into 45,000 training and 5,000 validation images. Validation data receive no random augmentation. Training uses random crops with four-pixel padding and random horizontal flips. The 10,000 test images are reserved for final evaluation; checkpoint selection uses validation accuracy only.
 
 All networks have ten output classes and are initialized without ImageNet weights. The ResNet-18 stem uses a $3\times3$ convolution at stride one and no initial max pool. VGG16 uses its convolutional feature stack, global $1\times1$ pooling, and a single 512-to-10 linear classifier. MobileNetV2 changes its initial convolution to stride one. These adaptations, especially the compact VGG classifier, must be stated when comparing with other implementations.
 
@@ -187,7 +190,7 @@ Transfer falls sharply with the perturbation budget, but the directional orderin
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{../artifacts/study/transfer_summary.pdf}
+\includegraphics[width=\columnwidth]{transfer_summary.pdf}
 \caption{Mean PGD PTR across three seeds versus $L_\infty$ budget. Error bars span the minimum and maximum seed values.}
 \label{fig:budget}
 \end{figure}
@@ -231,32 +234,21 @@ M$\rightarrow$V & 99.84 [99.81,99.90] & 0.00 [0.00,0.00] & 4.61 & 4.62\\
 
 The stronger 100-step, five-restart $8/255$ endpoint changes off-diagonal PTR by at most 1.70 percentage points relative to the primary 40-step, five-restart setting across all seeds. Increasing optimization does not increase every transfer entry: for example, ResNet-18-to-VGG16 falls slightly. At $2/255$ on seed 0, increasing from 40 to 100 steps at five restarts changes all off-diagonal PTR entries by at most 0.27 points and CTR entries by at most 0.40 points. This supports convergence of the primary step count without asserting a global optimum.
 
-FGSM reinforces the distinction between source strength and transfer (Table~\ref{tab:fgsm}). At $8/255$, its mean PTR is 27.80\% for ResNet-18-to-VGG16 and 29.34\% for MobileNetV2-to-VGG16, compared with 18.09\% and 25.94\% for PGD. PGD nevertheless has far higher source ASR. For the other four off-diagonal directions, PGD transfers more strongly than FGSM. This replicates prior observations that iterative source optimization can reduce transfer \cite{dong}; an attack ranking depends on direction and cannot be inferred from white-box source success alone.
+FGSM reinforces the distinction between source strength and transfer (Table~\ref{tab:fgsm}). At $8/255$, its mean PTR is 27.80\% for ResNet-18-to-VGG16 and 29.34\% for MobileNetV2-to-VGG16, compared with 18.09\% and 25.94\% for PGD. PGD nevertheless has far higher source ASR. For the other four off-diagonal directions, PGD transfers more strongly than FGSM. This replicates prior observations that iterative source optimization can reduce transfer \citep{dong}; an attack ranking depends on direction and cannot be inferred from white-box source success alone.
 
 \section{Evidence status and limitations}
-The code, manuscript, and reproducibility snapshot are archived under concept DOI \href{https://doi.org/10.5281/zenodo.22737839}{10.5281/zenodo.22737839}; the archived v1.0.0 study snapshot is \href{https://doi.org/10.5281/zenodo.22737840}{10.5281/zenodo.22737840}. The final record contains nine checkpoints, full-test predictions, exact eligibility counts, perturbation norms, manifests, and checkpoint and source hashes. The three seed triads provide evidence about variability under the specified training procedure, but three draws support descriptive ranges rather than precise population-level inference. Per-run Wilson intervals describe fixed-checkpoint binomial variation and do not capture training variability. The same 10,000 test images recur across seeds, so image-level counts must not be pooled as 30,000 independent observations.
+An anonymized reproducibility package accompanies this submission. It contains the corrected source snapshot, aggregate tables, manifests, and per-example evaluation records; the public repository and archival identifier are withheld during double-blind review. The final study record contains nine checkpoints, full-test predictions, exact eligibility counts, perturbation norms, manifests, and checkpoint and source hashes. The three seed triads provide evidence about variability under the specified training procedure, but three draws support descriptive ranges rather than precise population-level inference. Per-run Wilson intervals describe fixed-checkpoint binomial variation and do not capture training variability. The same 10,000 test images recur across seeds, so image-level counts must not be pooled as 30,000 independent observations.
 
 The study covers three standard CNN families on CIFAR-10 and untargeted $L_\infty$ attacks. It does not establish behavior on larger datasets, transformers, adversarially trained models, targeted attacks, or physical settings. It also does not compare against every modern transfer attack. The VGG16 learning-rate adjustment was selected using validation results after the common recipe failed. A seed-0 matched-learning-rate control preserves its strongest asymmetries, but only one control seed was run and some individual entries change substantially; optimization and architecture remain entangled. Random-noise draws are independently generated for each nominal source row, so noise-control rows are reproducible but do not share one common perturbation realization. The retained manifests record a dirty working tree at execution time; they preserve prediction checksums, checkpoint hashes, the recorded commit, and hashes of the executed source files, while the clean release tag archives the final corrected code.
 
 The original artifact is a motivating self-correction, not evidence that similar errors are common elsewhere. The present results do not imply that one architecture is intrinsically more transferable: architecture, parameterization, training dynamics, and clean accuracy vary together. PTR and CTR answer different questions, and neither should be selected after seeing which produces the more dramatic result.
 
+\section{Broader impact}
+This work studies standard, bounded attacks on CIFAR-10 classifiers to improve the validity and reproducibility of adversarial-robustness evaluation. The same methods can inform attempts to evade classifiers, but the experiments do not target a deployed system, use private data, or demonstrate a physical-world attack. Releasing exact denominators, perturbation norms, controls, and evaluation code primarily supports defensive auditing by making misleading transfer claims easier to detect and reproduce.
+
 \section{Conclusion}
 Across three training seeds, adversarial transfer on CIFAR-10 is strongly directional and budget dependent. At $8/255$, mean PGD PTR spans 18.09--95.23\% across off-diagonal pairs; at $2/255$, it spans 4.61--23.29\%. Conditioning is nearly mechanical in five directions, with one measurable failed-source exception. Yet conventional source ASR and PTR still cannot reconstruct CTR because source ASR uses the wrong, target-independent denominator. The strongest VGG directionality persists in a seed-0 matched-learning-rate control, while the movement of individual entries cautions against an architecture-only interpretation. Stronger source optimization can also reduce transfer for a particular direction, replicating established source-overfitting behavior. Compatible labels and preprocessing make these measurements meaningful; clean-error exclusions, explicit denominators, seed-level reporting, and convergence checks make their limits visible.
 
-\begin{thebibliography}{13}
-\bibitem{goodfellow} I. J. Goodfellow, J. Shlens, and C. Szegedy. Explaining and Harnessing Adversarial Examples. ICLR, 2015. \url{https://arxiv.org/abs/1412.6572}.
-\bibitem{madry} A. Madry, A. Makelov, L. Schmidt, D. Tsipras, and A. Vladu. Towards Deep Learning Models Resistant to Adversarial Attacks. ICLR, 2018. \url{https://arxiv.org/abs/1706.06083}.
-\bibitem{carlini} N. Carlini and D. Wagner. Towards Evaluating the Robustness of Neural Networks. IEEE Symposium on Security and Privacy, 2017. \url{https://arxiv.org/abs/1608.04644}.
-\bibitem{papernot} N. Papernot, P. McDaniel, I. Goodfellow, S. Jha, Z. B. Celik, and A. Swami. Practical Black-Box Attacks against Machine Learning. ACM AsiaCCS, 2017. \url{https://arxiv.org/abs/1602.02697}.
-\bibitem{liu} Y. Liu, X. Chen, C. Liu, and D. Song. Delving into Transferable Adversarial Examples and Black-box Attacks. ICLR, 2017. \url{https://arxiv.org/abs/1611.02770}.
-\bibitem{tramerspace} F. Tramer, N. Papernot, I. Goodfellow, D. Boneh, and P. McDaniel. The Space of Transferable Adversarial Examples. arXiv:1704.03453, 2017. \url{https://arxiv.org/abs/1704.03453}.
-\bibitem{dong} Y. Dong, F. Liao, T. Pang, H. Su, J. Zhu, X. Hu, and J. Li. Boosting Adversarial Attacks with Momentum. CVPR, 2018. \url{https://openaccess.thecvf.com/content_cvpr_2018/html/Dong_Boosting_Adversarial_Attacks_CVPR_2018_paper.html}.
-\bibitem{demontis} A. Demontis, M. Melis, M. Pintor, M. Jagielski, B. Biggio, A. Oprea, C. Nita-Rotaru, and F. Roli. Why Do Adversarial Attacks Transfer? Explaining Transferability of Evasion and Poisoning Attacks. USENIX Security, 2019. \url{https://www.usenix.org/conference/usenixsecurity19/presentation/demontis}.
-\newpage
-\bibitem{cifar} A. Krizhevsky. Learning Multiple Layers of Features from Tiny Images. Technical report, University of Toronto, 2009. \url{https://www.cs.toronto.edu/~kriz/cifar.html}.
-\bibitem{carlini2019} N. Carlini et al. On Evaluating Adversarial Robustness. arXiv:1902.06705, 2019. \url{https://arxiv.org/abs/1902.06705}.
-\bibitem{croce2020} F. Croce and M. Hein. Reliable Evaluation of Adversarial Robustness with an Ensemble of Diverse Parameter-free Attacks. ICML, PMLR 119:2206--2216, 2020. \url{https://proceedings.mlr.press/v119/croce20b.html}.
-\bibitem{tramer2020} F. Tramer, N. Carlini, W. Brendel, and A. Madry. On Adaptive Attacks to Adversarial Example Defenses. NeurIPS, 2020. \url{https://arxiv.org/abs/2002.08347}.
-\bibitem{robustbench} F. Croce et al. RobustBench: A Standardized Adversarial Robustness Benchmark. NeurIPS Datasets and Benchmarks, 2021. \url{https://robustbench.github.io/}.
-\end{thebibliography}
+\bibliography{main}
+\bibliographystyle{tmlr}
 \end{document}

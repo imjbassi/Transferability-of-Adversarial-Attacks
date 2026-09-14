@@ -10,3 +10,9 @@ tmp/
 paper/*.aux
 paper/*.log
 paper/*.out
+paper/tmlr/*.aux
+paper/tmlr/*.bbl
+paper/tmlr/*.blg
+paper/tmlr/*.log
+paper/tmlr/*.out
+release-assets/

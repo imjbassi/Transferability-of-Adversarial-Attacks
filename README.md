@@ -80,7 +80,7 @@ After placing the completed run directories under `runs`, verify every predictio
 .\.venv\Scripts\python.exe -m transferlab.study_report --runs runs --output artifacts\study --verify-predictions
 ```
 
-This reads existing results only. It writes a Markdown summary, a JSON summary, exact seed-level counts, the source-conditioning decomposition, the primary PGD Wilson-interval envelope, and convergence comparisons under `artifacts\study`. An optional `--lr-matched-run <run-directory>` adds the matched-learning-rate sensitivity comparison.
+This reads existing results only. It writes a Markdown summary, a JSON summary, exact seed-level counts, the source-conditioning decomposition, supplementary fixed-checkpoint Wilson intervals, and convergence comparisons under `artifacts\study`. The paper's main cross-seed tables report means and seed ranges. An optional `--lr-matched-run <run-directory>` adds the matched-learning-rate sensitivity comparison.
 
 Create the supplementary budget-sensitivity figure:
 

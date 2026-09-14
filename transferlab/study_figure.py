@@ -48,8 +48,8 @@ def main():
     if set(grouped) != expected or any(len(values) != 3 for values in grouped.values()):
         parser.error("expected three seeds for every off-diagonal PGD budget/pair")
 
-    plt.rcParams.update({"font.size": 8, "axes.labelsize": 9, "axes.titlesize": 10})
-    fig, axis = plt.subplots(figsize=(4.7, 3.05), constrained_layout=True)
+    plt.rcParams.update({"font.size": 7.5, "axes.labelsize": 8, "axes.titlesize": 9})
+    fig, axis = plt.subplots(figsize=(3.45, 2.55), constrained_layout=True)
     line_styles = {"resnet18": "-", "vgg16": "--", "mobilenet_v2": ":"}
     for source in LABELS:
         for target in LABELS:
@@ -73,7 +73,7 @@ def main():
     axis.set_xticks((2, 4, 8))
     axis.set_ylim(0, 100)
     axis.grid(alpha=0.25, linewidth=0.6)
-    axis.legend(fontsize=6.4, frameon=False, ncol=1, loc="upper left")
+    axis.legend(fontsize=5.2, frameon=False, ncol=1, loc="upper left")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, bbox_inches="tight")

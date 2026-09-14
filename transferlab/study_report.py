@@ -404,8 +404,8 @@ def main():
         f"For the seed-0 check at 2/255, the corresponding maximum is "
         f"{payload['max_abs_2of255_strong_minus_primary_ptr_points']:.2f} percentage points.", "",
         "Exact seed-level numerators and denominators are in `seed_level.csv`.", "",
-        "The primary PGD table's seed-specific Wilson interval envelope is in "
-        "`primary_pgd_wilson_envelope.csv`.", "",
+        "Supplementary seed-specific Wilson intervals for fixed checkpoints are in "
+        "`primary_pgd_wilson_envelope.csv`; the main paper reports seed ranges.", "",
         "The exact conditioning identity and failed-source stratum are in "
         "`conditioning_decomposition.csv`.", "",
     ])
